@@ -15,6 +15,19 @@ public sealed class PartyMembership
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
 
-    /// <summary>1 = group relation from the API (preferred), 2 = a term in the member's biography, 3 = the party the biography names (undated last resort).</summary>
+    /// <summary>Where the span comes from; see <see cref="PartyMembershipSource"/>.</summary>
     public int Source { get; set; }
+}
+
+/// <summary>Values of <see cref="PartyMembership.Source"/>, in priority order.</summary>
+public static class PartyMembershipSource
+{
+    /// <summary>A group→member relation from the API (preferred).</summary>
+    public const int ApiRelation = 1;
+
+    /// <summary>A dated term stated in the member's biography.</summary>
+    public const int BiographyTerm = 2;
+
+    /// <summary>The party the biography names, undated (start 1900-01-01); used only for vote attribution, never shown as a membership.</summary>
+    public const int BiographyParty = 3;
 }

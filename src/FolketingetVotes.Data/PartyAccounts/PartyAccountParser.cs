@@ -197,6 +197,21 @@ public static partial class PartyAccountParser
                 continue;
             }
 
+            // A two-column page can OCR into one line holding two donors ("… 110.595 Jette Gottlieb Christiansborg …"): split it.
+            var parts = MergedRowsRegex().Split(line).Where(p => p.Length > 0).ToList();
+            if (parts.Count > 1 && parts.All(p => TryParseRow(p, page, blockNote, null, null, out _)))
+            {
+                foreach (var part in parts)
+                {
+                    TryParseRow(part, page, blockNote, null, null, out var partRow);
+                    donations.Add(partRow with { RawText = line });
+                }
+
+                pendingName = null;
+                misses = 0;
+                continue;
+            }
+
             if (TryParseRow(line, page, blockNote, pendingName, donations.Count > 0 ? donations[^1].DonorAddress : null, out var donation))
             {
                 if (pendingName is not null && donation.DonorName == pendingName)
@@ -310,6 +325,14 @@ public static partial class PartyAccountParser
             address = comma > 0 ? text[(comma + 1)..].Trim() : null;
         }
 
+        // OCR often joins the columns with single spaces ("Frank Aaen Jagtvej 197, 2. th 2100 København Ø"): the
+        // name is what precedes the street, so split there when the "name" still contains a street or postal code.
+        if (columns.Count < 2 && (StreetNumberRegex().IsMatch(name) || PostalCodeRegex().IsMatch(name)) && SplitNameFromStreet(name) is { } split)
+        {
+            address = address is null ? split.Street : split.Street + ", " + address;
+            name = split.Name;
+        }
+
         // The name column was lost (OCR) or the row is just an address for a name on the previous line.
         var nameIsAddress = PostalCodeRegex().IsMatch(name) || StreetNumberRegex().IsMatch(name) || !name.Any(char.IsLetter)
             || (previousAddress is not null && previousAddress.StartsWith(name, StringComparison.OrdinalIgnoreCase));
@@ -335,6 +358,45 @@ public static partial class PartyAccountParser
         var cleaned = SignatureJunkRegex().Replace(line, string.Empty);
         cleaned = DanglingParenthesisRegex().Replace(cleaned, string.Empty);
         return cleaned.Trim().TrimEnd(',', ';');
+    }
+
+    private static readonly HashSet<string> StreetPrefixes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Ved", "Store", "Lille", "Gammel", "Gl.", "Ny", "Nørre", "Sønder", "Søndre", "Nordre", "Vestre", "Østre", "Vester", "Øster", "Sankt", "Skt.",
+    };
+
+    private static readonly HashSet<string> StreetWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Plads", "Allé", "Alle", "Vej", "Gade", "Boulevard", "Blvd.", "Torv", "Kanal", "Havn", "Stræde", "Park", "Have", "Kaj",
+    };
+
+    /// <summary>
+    /// "Christian Juhl Bindslevs Plads 12" → ("Christian Juhl", "Bindslevs Plads 12"). The street is the last word (or the
+    /// last two when they form a known street phrase) before the first house number or postal code; the name is the rest.
+    /// </summary>
+    internal static (string Name, string Street)? SplitNameFromStreet(string text)
+    {
+        var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var firstNumber = Array.FindIndex(tokens, t => t.Length > 0 && char.IsDigit(t[0]));
+        if (firstNumber < 2)
+        {
+            return null;
+        }
+
+        var streetStart = firstNumber - 1;
+        if (streetStart >= 1 && (StreetWords.Contains(tokens[streetStart]) || StreetPrefixes.Contains(tokens[streetStart - 1])))
+        {
+            streetStart--;
+        }
+
+        if (streetStart < 1)
+        {
+            return null;
+        }
+
+        var name = string.Join(' ', tokens[..streetStart]);
+        var street = string.Join(' ', tokens[streetStart..]);
+        return name.Count(char.IsLetter) >= 3 ? (name, street) : null;
     }
 
     internal static decimal? ParseAmount(string digits)
@@ -408,6 +470,10 @@ public static partial class PartyAccountParser
     // A line that is only a postal code and town, continuing the previous row's address.
     [GeneratedRegex(@"^[1-9]\d{3}\s+\p{Lu}[\p{L}. ]{1,30}$")]
     private static partial Regex PostalOnlyRegex();
+
+    // Split point between two donors on one OCR line: an amount followed by a capitalised first and last name.
+    [GeneratedRegex(@"(?<=\d{1,3}(?:\.\d{3})+)\s+(?=\p{Lu}\p{Ll}+(?:-\p{Lu}\p{Ll}+)?\s+\p{Lu})")]
+    private static partial Regex MergedRowsRegex();
 
     // A separate amount line under a vertically laid out donor: "Bidrag: 600.585 kr. inklusive ..."
     [GeneratedRegex(@"^(bidrag|beløb|tilskud)\s*:?\s*(?<amount>\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)\s*kr", RegexOptions.IgnoreCase)]

@@ -1,3 +1,4 @@
+using FolketingetVotes.Core.Entities;
 using FolketingetVotes.Core.Enums;
 using FolketingetVotes.Core.Queries;
 using FolketingetVotes.Core.ReadModels;
@@ -28,8 +29,8 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
                 a.PictureUrl,
                 st.Total,
                 st.Absent,
-                CurrentParty = db.PartyMemberships.Where(pm => pm.PersonId == a.Id).OrderByDescending(pm => pm.StartDate).Select(pm => pm.PartyShortName).FirstOrDefault(),
-                IsCurrent = db.PartyMemberships.Any(pm => pm.PersonId == a.Id && (pm.EndDate == null || pm.EndDate >= today)),
+                CurrentParty = db.PartyMemberships.Where(pm => pm.PersonId == a.Id).OrderBy(pm => pm.Source == PartyMembershipSource.BiographyParty).ThenByDescending(pm => pm.StartDate).Select(pm => pm.PartyShortName).FirstOrDefault(),
+                IsCurrent = db.PartyMemberships.Any(pm => pm.PersonId == a.Id && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)),
             };
 
         if (!string.IsNullOrWhiteSpace(filter.Query))
@@ -43,7 +44,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             var party = filter.PartyShortName;
             query = filter.CurrentOnly
                 ? query.Where(x => x.CurrentParty == party && x.IsCurrent)
-                : query.Where(x => db.PartyMemberships.Any(pm => pm.PersonId == x.Id && pm.PartyShortName == party));
+                : query.Where(x => db.PartyMemberships.Any(pm => pm.PersonId == x.Id && pm.PartyShortName == party && pm.Source != PartyMembershipSource.BiographyParty));
         }
         else if (filter.CurrentOnly)
         {
@@ -70,12 +71,15 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             from pm in db.PartyMemberships
             join p0 in db.Parties on pm.PartyShortName equals p0.ShortName into pp
             from p in pp.DefaultIfEmpty()
-            where pm.PersonId == actorId
+            where pm.PersonId == actorId && pm.Source != PartyMembershipSource.BiographyParty
             orderby pm.StartDate
             select new PartyMembershipRow(pm.PartyShortName, p != null ? p.Name : pm.PartyShortName, pm.StartDate, pm.EndDate)).ToListAsync(cancellationToken);
 
         var merged = MergeConsecutive(memberships);
         var current = merged.LastOrDefault(m => m.EndDate is null || m.EndDate >= today);
+        var biographyParty = merged.Count == 0
+            ? await db.PartyMemberships.Where(pm => pm.PersonId == actorId && pm.Source == PartyMembershipSource.BiographyParty).Select(pm => pm.PartyShortName).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         var perPeriod = await (
             from s in db.PoliticianStats
@@ -94,7 +98,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             acc.WithPartyCount + r.Stats.WithPartyCount,
             acc.AgainstPartyCount + r.Stats.AgainstPartyCount));
 
-        return new PoliticianProfile(actor.Id, actor.Name, actor.PictureUrl, current?.PartyShortName ?? merged.LastOrDefault()?.PartyShortName, current is not null, merged, overall, perPeriod);
+        return new PoliticianProfile(actor.Id, actor.Name, actor.PictureUrl, current?.PartyShortName ?? merged.LastOrDefault()?.PartyShortName ?? biographyParty, current is not null, merged, overall, perPeriod);
     }
 
     public async Task<PagedResult<PoliticianBallotRow>> GetBallotsAsync(int actorId, BallotFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)

@@ -1,3 +1,4 @@
+using FolketingetVotes.Core.Entities;
 using FolketingetVotes.Core.Queries;
 using FolketingetVotes.Core.ReadModels;
 using FolketingetVotes.Data.Persistence;
@@ -15,7 +16,7 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
             select new PartyListItem(
                 p.ShortName,
                 p.Name,
-                db.PartyMemberships.Where(pm => pm.PartyShortName == p.ShortName && (pm.EndDate == null || pm.EndDate >= today)).Select(pm => pm.PersonId).Distinct().Count(),
+                db.PartyMemberships.Where(pm => pm.PartyShortName == p.ShortName && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)).Select(pm => pm.PersonId).Distinct().Count(),
                 p.FirstSeen,
                 p.LastSeen)).ToListAsync(cancellationToken);
         return items.OrderByDescending(i => i.CurrentMembers).ThenByDescending(i => i.LastSeen).ThenBy(i => i.Name).ToList();
@@ -33,7 +34,7 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
         var members = await (
             from pm in db.PartyMemberships
             join a in db.Actors on pm.PersonId equals a.Id
-            where pm.PartyShortName == shortName && (pm.EndDate == null || pm.EndDate >= today)
+            where pm.PartyShortName == shortName && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)
             group new { a, pm } by new { a.Id, a.Name, a.PictureUrl } into g
             orderby g.Key.Name
             select new PartyMemberRow(g.Key.Id, g.Key.Name, g.Key.PictureUrl, g.Min(x => x.pm.StartDate))).ToListAsync(cancellationToken);

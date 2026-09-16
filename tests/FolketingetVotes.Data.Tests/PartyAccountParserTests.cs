@@ -312,6 +312,36 @@ public class PartyAccountParserTests
         Assert.Single(account.Donations);
     }
 
+    [Theory]
+    [InlineData("Frank Aaen Jagtvej 197", "Frank Aaen", "Jagtvej 197")]
+    [InlineData("Christian Juhl Bindslevs Plads 12", "Christian Juhl", "Bindslevs Plads 12")]
+    [InlineData("Per Clausen Vestre Fjordvej 34", "Per Clausen", "Vestre Fjordvej 34")]
+    [InlineData("Pelle Andersen-Haril Ved Stranden 8 Kulhuse", "Pelle Andersen-Haril", "Ved Stranden 8 Kulhuse")]
+    [InlineData("Trine Pertou Mach Christiansborg 1240 København K", "Trine Pertou Mach", "Christiansborg 1240 København K")]
+    public void Splits_single_space_rows_at_the_street(string text, string name, string street)
+        => Assert.Equal((name, street), PartyAccountParser.SplitNameFromStreet(text));
+
+    [Fact]
+    public void Single_space_rows_and_two_donors_per_line()
+    {
+        PdfPageText[] pages =
+        [
+            new(110, """
+                Enhedslisten
+                Noter
+                Tilskud over 5.000 kr. er i 2022 modtaget fra følgende bidragsydere
+                Frank Aaen Jagtvej 197, 2. th 2100 København O 86.659
+                Trine Pertou Mach Christiansborg 1240 København K 18.516
+                Victoria Velásquez Christiansborg 1240 København K 110.595 Jette Ryde Gottlieb Christiansborg 1240 København K 110.595
+                Vedr. indberetningspligtige tilskud
+                """),
+        ];
+        var el = Assert.Single(PartyAccountParser.Parse(pages)).Donations;
+        Assert.Equal(["Frank Aaen", "Trine Pertou Mach", "Victoria Velásquez", "Jette Ryde Gottlieb"], el.Select(d => d.DonorName));
+        Assert.Equal(("Jagtvej 197, 2. th 2100 København O", 86_659m), (el[0].DonorAddress, el[0].Amount));
+        Assert.Equal(110_595m, el[3].Amount);
+    }
+
     [Fact]
     public void None_statements_yield_no_rows()
     {
