@@ -44,6 +44,7 @@ The `Fil.filurl` values from the API point at `www.ft.dk/ripdf/...`, which is th
 
 - Legal basis: partiregnskabsloven. Parties that stood at the latest election must submit annual accounts to Folketinget within 12 months; donors giving more than 20,000 DKK (2017 level, indexed yearly) in a year must be listed with **name, address and total amount**. Anonymous donations above the threshold are banned since 1 July 2017.
 - Publication: Folketinget publishes one combined PDF per year (e.g. `…/folketingets-regnskaber/partierne/partiregnskaber_2018.ashx`). **ft.dk is behind a Cloudflare bot challenge**, so the PDFs must be downloaded by a person and imported with `import-party-accounts`. No structured (non-PDF) source exists; valg.im.dk only links to ft.dk and to the 98 municipalities' own declarations.
+- **The PDFs are scans.** Of the 2019–2024 files (186–260 pages each), four have no text layer at all and two have text on a few pages only. They are OCR'd with `tools/ocr-pdf` (Apple Vision, Danish model, ~1 s/page) into `.ocr.txt` sidecars that the importer reads; see `tools/ocr-pdf/README.md`.
 - The parser is heuristic (each party lays out its accounts differently) and keeps the raw line and page number for every row so the site can show the exact source.
 
 ## Not used (yet)

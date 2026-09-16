@@ -56,7 +56,7 @@ HTML/CSS marks following the data-visualisation method used in this project: bar
 
 ## 🧪 Party accounts (`import-party-accounts`)
 
-`PartyAccountPdfReader` (PdfPig) extracts page text; `PartyAccountParser` splits the combined PDF into party sections by known headings, finds the "contributions above the threshold" blocks and parses `Name, Address … amount kr.` lines, keeping the raw line and page number. `PartyAccountImporter` upserts by (year, party) and replaces that party's donations. Parsing is heuristic and unit-tested on synthetic text; it must be checked against the real 2018+ PDFs (which cannot be downloaded by a script) and the heading list / regexes tuned. The party page shows the raw source line on hover and the page number for every row.
+`PartyAccountPdfReader` reads an OCR sidecar (`file.ocr.txt`, produced by `tools/ocr-pdf` with Apple Vision because the published PDFs are scans) or, for PDFs with a real text layer, extracts text with PdfPig; `PartyAccountParser` splits the combined PDF into party sections by known headings, finds the "contributions above the threshold" blocks and parses `Name, Address … amount kr.` lines, keeping the raw line and page number. `PartyAccountImporter` upserts by (year, party) and replaces that party's donations. Parsing is heuristic and unit-tested on synthetic text; it must be checked against the real 2018+ PDFs (which cannot be downloaded by a script) and the heading list / regexes tuned. The party page shows the raw source line on hover and the page number for every row.
 
 ## Not features (by design)
 

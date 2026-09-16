@@ -4,8 +4,8 @@ Ordered by value. Each item names the extension point it uses.
 
 ## 1. Verify and tune the party-accounts parser (bonus feature, partly done)
 
-- Download the combined PDFs for 2018–2024 from ft.dk (manual; bot-protected) into `data/partiregnskaber/`.
-- Run `import-party-accounts`, inspect `party_donations.raw_text`, tune `PartyAccountParser.KnownParties`, `DonorHeaderRegex`, `BlockEndRegex`, `AmountRegex`; add real-text fixtures to `PartyAccountParserTests`.
+- Done: PDFs for 2019–2024 are in `data/partiregnskaber/` (ignored by git) and OCR'd with `tools/ocr-pdf`.
+- Run `import-party-accounts`, inspect `party_donations.raw_text`, tune the heading list, `DonorHeaderRegex`, `BlockEndRegex`, `AmountRegex` against the OCR text; add real-text fixtures to `PartyAccountParserTests`.
 - Add an "all donors" page (`/bidrag`) listing donors across parties and years, with donor search — a strong transparency feature once data is reliable.
 - Consider public party support (partistøtte) amounts from valg.im.dk for context.
 

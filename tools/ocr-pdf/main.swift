@@ -3,7 +3,7 @@
 //
 //   swiftc -O -o ocr-pdf main.swift
 //   ./ocr-pdf "Partiregnskaber2023.pdf"            # writes Partiregnskaber2023.ocr.txt next to the PDF
-//   ./ocr-pdf --no-correction --dpi 300 file.pdf   # options: --no-correction (keep raw names), --dpi N, --out path
+//   ./ocr-pdf --no-correction --dpi 300 file.pdf   # options: --no-correction (keep raw names), --dpi N, --out path, --from N (resume)
 //
 // Lines are reconstructed from Vision's text blocks by grouping blocks with the same vertical position and
 // ordering them left to right, with two spaces between blocks so table columns stay separable.
@@ -17,6 +17,7 @@ struct Options {
     var output: String?
     var dpi: CGFloat = 300
     var languageCorrection = true
+    var fromPage = 1
 }
 
 func parse(_ args: [String]) -> Options {
@@ -27,6 +28,7 @@ func parse(_ args: [String]) -> Options {
         case "--no-correction": o.languageCorrection = false
         case "--dpi": i += 1; o.dpi = CGFloat(Double(args[i]) ?? 300)
         case "--out": i += 1; o.output = args[i]
+        case "--from": i += 1; o.fromPage = Int(args[i]) ?? 1
         default: o.input = args[i]
         }
         i += 1
@@ -78,19 +80,29 @@ guard !options.input.isEmpty, let document = PDFDocument(url: URL(fileURLWithPat
     exit(2)
 }
 let outputPath = options.output ?? options.input.replacingOccurrences(of: ".pdf", with: "", options: [.caseInsensitive, .anchored, .backwards]) + ".ocr.txt"
-var output = ""
+// Output is appended page by page so a crash or interruption keeps what was done; --from N resumes.
+if options.fromPage <= 1 || !FileManager.default.fileExists(atPath: outputPath) {
+    FileManager.default.createFile(atPath: outputPath, contents: nil)
+}
+guard let handle = FileHandle(forWritingAtPath: outputPath) else { print("cannot write \(outputPath)"); exit(1) }
+handle.seekToEndOfFile()
 let started = Date()
-for index in 0..<document.pageCount {
-    output += "=== Page \(index + 1) ===\n"
-    guard let page = document.page(at: index), let image = render(page, dpi: options.dpi) else { continue }
-    do {
-        output += try recognise(image, correction: options.languageCorrection).joined(separator: "\n") + "\n"
-    } catch {
-        FileHandle.standardError.write("page \(index + 1): \(error)\n".data(using: .utf8)!)
+for index in max(0, options.fromPage - 1)..<document.pageCount {
+    // Each page allocates tens of MB of image and Vision objects; without a pool they accumulate until the process is killed.
+    autoreleasepool {
+        var text = "=== Page \(index + 1) ===\n"
+        if let page = document.page(at: index), let image = render(page, dpi: options.dpi) {
+            do {
+                text += try recognise(image, correction: options.languageCorrection).joined(separator: "\n") + "\n"
+            } catch {
+                FileHandle.standardError.write("page \(index + 1): \(error)\n".data(using: .utf8)!)
+            }
+        }
+        handle.write(text.data(using: .utf8)!)
     }
-    if (index + 1) % 20 == 0 {
+    if (index + 1) % 20 == 0 || index + 1 == document.pageCount {
         FileHandle.standardError.write("\(index + 1)/\(document.pageCount) pages, \(Int(Date().timeIntervalSince(started))) s\n".data(using: .utf8)!)
     }
 }
-try output.write(toFile: outputPath, atomically: true, encoding: .utf8)
+handle.closeFile()
 print("wrote \(outputPath): \(document.pageCount) pages in \(Int(Date().timeIntervalSince(started))) s")
