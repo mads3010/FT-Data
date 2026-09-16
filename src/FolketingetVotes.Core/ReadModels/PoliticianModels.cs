@@ -1,3 +1,4 @@
+using FolketingetVotes.Core.Entities;
 using FolketingetVotes.Core.Enums;
 
 namespace FolketingetVotes.Core.ReadModels;
@@ -11,7 +12,8 @@ public sealed record PoliticianListItem(
     string? PictureUrl,
     bool IsCurrentMember,
     int BallotCount,
-    double? AttendanceRate);
+    double? AttendanceRate,
+    int? BornYear);
 
 public sealed record PartyMembershipRow(string PartyShortName, string PartyName, DateOnly StartDate, DateOnly? EndDate);
 
@@ -23,7 +25,9 @@ public sealed record PoliticianStats(
     int AbstainCount,
     int AbsentCount,
     int WithPartyCount,
-    int AgainstPartyCount)
+    int AgainstPartyCount,
+    int MinisterTotal = 0,
+    int MinisterAbsent = 0)
 {
     public static PoliticianStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 
@@ -31,6 +35,18 @@ public sealed record PoliticianStats(
 
     /// <summary>Share of votes where the member was present (cast for, against or abstain).</summary>
     public double? AttendanceRate => Total == 0 ? null : Present / (double)Total;
+
+    /// <summary>Attendance counting only votes held while the member did not hold a ministerial post.</summary>
+    public double? AttendanceRateExcludingMinisterPeriods
+    {
+        get
+        {
+            var total = Total - MinisterTotal;
+            return total <= 0 ? null : (total - (AbsentCount - MinisterAbsent)) / (double)total;
+        }
+    }
+
+    public bool HasMinisterPeriods => MinisterTotal > 0;
 
     /// <summary>Share of present votes with a party majority where the member voted like that majority.</summary>
     public double? PartyAgreementRate
@@ -45,6 +61,20 @@ public sealed record PoliticianStats(
 
 public sealed record PoliticianPeriodStatsRow(int PeriodId, string PeriodTitle, DateTime PeriodStart, PoliticianStats Stats);
 
+public sealed record RolePeriodRow(RolePeriodKind Kind, string Title, DateOnly StartDate, DateOnly? EndDate);
+
+/// <summary>A case in a list (search results, a member's proposals, a topic).</summary>
+public sealed record CaseListItem(
+    int CaseId,
+    CaseType Type,
+    string? Number,
+    string Title,
+    string? StatusName,
+    int PeriodId,
+    string PeriodTitle,
+    int VoteCount,
+    string? RoleName);
+
 public sealed record PoliticianProfile(
     int ActorId,
     string Name,
@@ -53,7 +83,12 @@ public sealed record PoliticianProfile(
     bool IsCurrentMember,
     IReadOnlyList<PartyMembershipRow> Memberships,
     PoliticianStats Overall,
-    IReadOnlyList<PoliticianPeriodStatsRow> PerPeriod);
+    IReadOnlyList<PoliticianPeriodStatsRow> PerPeriod,
+    int? BornYear,
+    IReadOnlyList<RolePeriodRow> MinisterPeriods,
+    IReadOnlyList<RolePeriodRow> TemporaryPeriods,
+    IReadOnlyList<string> CurrentCommittees,
+    IReadOnlyList<CaseListItem> Proposals);
 
 public sealed record BallotFilter(
     int? PeriodId = null,

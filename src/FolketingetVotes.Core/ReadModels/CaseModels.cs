@@ -18,6 +18,10 @@ public sealed record CaseActorRow(int ActorId, string Name, int RoleId, string R
 
 public sealed record CaseStepRow(int StepId, string Title, DateTime? Date, string? TypeName, string? StatusName);
 
+public sealed record KeywordRow(int KeywordId, string Name, int TypeId);
+
+public sealed record CaseFilter(string? Query = null, int? PeriodId = null, CaseType? Type = null, bool OnlyWithVotes = false);
+
 public sealed record CaseDetail(
     CaseSummary Case,
     string? Summary,
@@ -27,7 +31,8 @@ public sealed record CaseDetail(
     string? RetsinformationUrl,
     IReadOnlyList<CaseActorRow> Actors,
     IReadOnlyList<CaseStepRow> Steps,
-    IReadOnlyList<VoteListItem> Votes)
+    IReadOnlyList<VoteListItem> Votes,
+    IReadOnlyList<KeywordRow> Keywords)
 {
     /// <summary>Public case page on folketingstidende.dk, which serves bill texts without bot challenges.</summary>
     public string? FolketingstidendeUrl => ExternalLinks.FolketingstidendeCaseUrl(Case.PeriodCode, Case.Type, Case.Number);
@@ -45,6 +50,17 @@ public static class ExternalLinks
     {
         var (segment, slug) = Segment(type, number);
         return segment is null ? null : $"{FolketingstidendeBase}/samling/{periodCode}/{segment}/{slug}/index.htm";
+    }
+
+    /// <summary>Transcript of a chamber sitting: /samling/20231/salen/M10/20231_M10_referat.pdf (verified to resolve).</summary>
+    public static string? TranscriptPdfUrl(string periodCode, string? meetingNumber)
+    {
+        if (string.IsNullOrWhiteSpace(periodCode) || string.IsNullOrWhiteSpace(meetingNumber) || !meetingNumber.All(char.IsDigit))
+        {
+            return null;
+        }
+
+        return $"{FolketingstidendeBase}/samling/{periodCode}/salen/M{meetingNumber}/{periodCode}_M{meetingNumber}_referat.pdf";
     }
 
     public static string? BillAsIntroducedPdfUrl(string periodCode, CaseType type, string? number)

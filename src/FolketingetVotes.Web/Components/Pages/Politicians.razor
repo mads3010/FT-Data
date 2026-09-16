@@ -5,7 +5,7 @@
 <PageTitle>Politikere</PageTitle>
 
 <h1>Politikere</h1>
-<p class="lead">Alle, der har afgivet stemmer i Folketingssalen siden oktober 2004. Fremmøde er andelen af afstemninger, hvor medlemmet stemte for, imod eller hverken/eller.</p>
+<p class="lead">Nuværende medlemmer af Folketinget, eller alle der har afgivet stemmer i salen siden oktober 2004. Fremmøde er andelen af afstemninger, hvor medlemmet stemte for, imod eller hverken/eller.</p>
 
 <form class="filters" method="get" action="/politikere">
     <label>Navn
@@ -20,7 +20,7 @@
             }
         </select>
     </label>
-    <label class="check"><input type="checkbox" name="current" value="true" checked="@Current" /> Kun nuværende medlemmer</label>
+    <label class="check"><input type="checkbox" name="all" value="true" checked="@All" /> Inkl. tidligere medlemmer</label>
     <button type="submit">Søg</button>
 </form>
 
@@ -38,7 +38,7 @@ else
                 @foreach (var p in result.Items)
                 {
                     <tr>
-                        <td><div class="person"><Avatar PictureUrl="@p.PictureUrl" Name="@p.Name" /><a href="/politikere/@p.ActorId">@p.Name</a>@if (!p.IsCurrentMember) { <span class="muted small">(tidligere)</span> }</div></td>
+                        <td><div class="person"><Avatar PictureUrl="@p.PictureUrl" Name="@p.Name" /><a href="/politikere/@p.ActorId">@p.Name</a>@if (p.BornYear is { } y) { <span class="muted small">f. @y</span> }@if (!p.IsCurrentMember) { <span class="muted small">(tidligere)</span> }</div></td>
                         <td><PartyChip ShortName="@p.PartyShortName" Placeholder="–" /></td>
                         <td class="num">@Labels.Number(p.BallotCount)</td>
                         <td class="num">@Labels.Percent(p.AttendanceRate)</td>
@@ -55,7 +55,7 @@ else
 
     [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
     [SupplyParameterFromQuery(Name = "party")] public string? Party { get; set; }
-    [SupplyParameterFromQuery(Name = "current")] public bool Current { get; set; }
+    [SupplyParameterFromQuery(Name = "all")] public bool All { get; set; }
     [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
 
     private PagedResult<PoliticianListItem>? result;
@@ -64,8 +64,8 @@ else
     protected override async Task OnInitializedAsync()
     {
         parties = await PartyQueries.ListAsync();
-        result = await PoliticianQueries.SearchAsync(new PoliticianFilter(Query, Party, Current), Math.Max(1, Page ?? 1), PageSize);
+        result = await PoliticianQueries.SearchAsync(new PoliticianFilter(Query, Party, CurrentOnly: !All), Math.Max(1, Page ?? 1), PageSize);
     }
 
-    private string Href(int page) => QueryString.Build("/politikere", ("q", Query), ("party", Party), ("current", Current ? "true" : null), ("page", page.ToString()));
+    private string Href(int page) => QueryString.Build("/politikere", ("q", Query), ("party", Party), ("all", All ? "true" : null), ("page", page.ToString()));
 }

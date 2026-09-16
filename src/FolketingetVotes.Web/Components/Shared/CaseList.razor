@@ -1,0 +1,23 @@
+<div class="table-wrap">
+    <table class="data">
+        <thead><tr><th>Nr.</th><th>Sag</th><th>Status</th><th>Folketingsår</th><th class="num">Afstemninger</th>@if (ShowRole) { <th>Rolle</th> }</tr></thead>
+        <tbody>
+            @foreach (var c in Cases)
+            {
+                <tr>
+                    <td class="nowrap">@c.Number</td>
+                    <td><a href="/sager/@c.CaseId">@c.Title</a> <span class="muted small">@Labels.CaseType(c.Type)</span></td>
+                    <td class="small muted">@c.StatusName</td>
+                    <td class="small nowrap">@c.PeriodTitle</td>
+                    <td class="num">@c.VoteCount</td>
+                    @if (ShowRole) { <td class="small muted">@c.RoleName</td> }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<CaseListItem> Cases { get; set; } = [];
+    [Parameter] public bool ShowRole { get; set; }
+}

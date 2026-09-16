@@ -21,10 +21,12 @@ Implementation sketch (Claude via the Anthropic .NET/HTTP API):
 
 ## 3. More views on the same data
 
-- Vote comparison: how often two parties (or two members) vote the same way per session (`mv_ballots` self-join).
-- Topic browsing via `Emneord`/`EmneordSag` (subject keywords) — needs two more sync classes.
-- Minister accountability: cases per minister and their outcomes (`case_actors` role 14).
-- Per-session "most contested votes" (smallest margins) and "unanimous" lists.
+Done in v0.2: topics, sessions with agreement matrix and closest votes, donor index, case search, member comparison, proposals and ministerial periods on profiles, feeds and sitemap.
+
+Remaining ideas:
+- Party-vs-party comparison page (the matrix gives the number; a page could list the votes where two parties differed).
+- Topic trends over time (votes per topic per session).
+- Substitute (stedfortræder) periods, if a data source turns up (the biographies do not state them; the API's role 10 relations only cover committees).
 
 ## 4. Operations
 

@@ -37,6 +37,34 @@ Status legend: ✅ implemented · 🧪 implemented, needs real-data calibration 
 - Case number, title, status, Folketinget's official summary (`resume`), who is behind it (proposers, minister, ministry with their official role names), all votes in the case, the official voting conclusion, deterministic links to Folketingstidende (case page and the bill as introduced PDF), law number/date and Retsinformation when available, the case's step history.
 - A slot for a machine-generated summary renders only when an `ISummaryProvider` returns one (v1: never).
 
+## ✅ Topics (`/emner`, `/emner/{id}`)
+
+Folketinget's administration attaches subject keywords (Emneord: 49k keywords, 275k case links, three types: sagsområde, controlled, free) to cases. The topic list ranks keywords by chamber votes; a topic page shows, for each party, how many final-passage votes on the topic its majority cast for / against / abstain (counting votes, not members), plus all votes on the topic. Case pages link their keywords.
+
+## ✅ Sessions (`/folketingsaar`, `/folketingsaar/{id}`)
+
+Per session: votes, share passed (Folketinget's own outcome), share unanimous (nobody against or abstaining), each group's members, attendance and cohesion, the **agreement matrix** (for every pair of groups: share of votes where both majorities coincided, among votes where both had a majority, computed by `AgreementMath`), and the closest votes by for–against margin.
+
+## ✅ Donor index (`/bidrag`, `/bidrag/{name}`)
+
+The party-account rows regrouped by donor across parties and years (`DonorNames.Normalize` folds case, punctuation and spacing). Filters by name, party and year. Donors whose normalised name matches a person with ballots are flagged "MF" and linked; most of those rows are partiskat. The donor page lists every row with year, party, address as stated, amount when stated, source file, page and the accounts' own wording.
+
+## ✅ Case search (`/sager`) and comparison (`/sammenlign`)
+
+Bills and resolutions searchable by title, number and keyword, filtered by session, type and "only with votes". The comparison page takes two members (current members in the pickers, any ids in the URL) and shows shared votes, votes where both were present, agreement share and the list of votes where they differed, optionally within one session.
+
+## ✅ Politician profile additions
+
+Birth year (namesakes exist: four "Kirsten Hermansen"), ministerial periods from the API's dated ministertitel relations, **attendance excluding ministerial periods** (ministers rarely vote; the ordinary figure is still shown in the note), current committee memberships, and the bills/resolutions the member proposed or was responsible minister for, with outcome. Substitute periods are not available in the data (biographies never say "midlertidigt"), so none are claimed.
+
+## ✅ Current members
+
+Defined as everyone registered (present or absent) in the votes of the latest sitting day, with the group attributed that day. This is exactly the seated roster (179) and sidesteps the API's missing group relations. Used by the party pages, the member counts and the politician list (which now defaults to current members).
+
+## ✅ Feeds, sitemap, sharing
+
+`/feed.xml` (Atom, latest 50 votes), `/sitemap.xml` (every vote, politician, party, case with votes, topic and session), `/robots.txt`, and Open Graph tags on vote, politician, case, topic, session and donor pages so shared links preview with the actual counts. Vote pages link the sitting's verbatim transcript on folketingstidende.dk (`/samling/{code}/salen/M{n}/{code}_M{n}_referat.pdf`).
+
 ## ✅ Home and About
 
 - Home: headline counts, latest votes, last sync time.

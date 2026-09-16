@@ -1,0 +1,106 @@
+@page "/sammenlign"
+@inject IComparisonQueries Comparisons
+@inject IPoliticianQueries Politicians
+@inject ISiteQueries Site
+
+<PageTitle>Sammenlign to politikere</PageTitle>
+<PageMeta Title="Sammenlign to politikere" Description="Hvor ofte stemte to medlemmer af Folketinget ens, og hvor stemte de forskelligt?" />
+
+<h1>Sammenlign to politikere</h1>
+<p class="lead">Andel af afstemninger, hvor begge var til stede og stemte ens, og listen over de afstemninger hvor de stemte forskelligt.</p>
+
+<form class="filters" method="get" action="/sammenlign">
+    <label>Politiker A
+        <select name="a">
+            <option value="">Vælg…</option>
+            @foreach (var p in options)
+            {
+                <option value="@p.ActorId" selected="@(p.ActorId == A)">@p.Name (@p.PartyShortName)</option>
+            }
+        </select>
+    </label>
+    <label>Politiker B
+        <select name="b">
+            <option value="">Vælg…</option>
+            @foreach (var p in options)
+            {
+                <option value="@p.ActorId" selected="@(p.ActorId == B)">@p.Name (@p.PartyShortName)</option>
+            }
+        </select>
+    </label>
+    <label>Folketingsår
+        <select name="period">
+            <option value="">Alle</option>
+            @foreach (var p in periods)
+            {
+                <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option>
+            }
+        </select>
+    </label>
+    <button type="submit">Sammenlign</button>
+</form>
+<p class="small muted">Listen viser nuværende medlemmer; tidligere medlemmer kan sammenlignes via adressen <code>/sammenlign?a=ID&amp;b=ID</code> med id'erne fra deres sider.</p>
+
+@if (A is null || B is null)
+{
+}
+else if (result is null)
+{
+    <p class="muted">Kunne ikke sammenligne. Vælg to forskellige politikere med registrerede stemmer.</p>
+}
+else
+{
+    <h2><a href="/politikere/@result.A.ActorId">@result.A.Name</a> <PartyChip ShortName="@result.A.PartyShortName" /> og <a href="/politikere/@result.B.ActorId">@result.B.Name</a> <PartyChip ShortName="@result.B.PartyShortName" /></h2>
+    <div class="tiles">
+        <StatTile Label="Fælles afstemninger" Value="@Labels.Number(result.SharedVotes)" Note="hvor begge var registreret" />
+        <StatTile Label="Begge til stede" Value="@Labels.Number(result.BothPresent)" />
+        <StatTile Label="Stemte ens" Value="@Labels.Percent(result.AgreementRate)" Note="@($"{Labels.Number(result.Agreed)} afstemninger")" />
+        <StatTile Label="Stemte forskelligt" Value="@Labels.Number(result.Differed)" />
+    </div>
+
+    @if (result.LatestDifferences.Count > 0)
+    {
+        <h2>Afstemninger hvor de stemte forskelligt</h2>
+        @if (result.Differed > result.LatestDifferences.Count)
+        {
+            <p class="small muted">Viser de @result.LatestDifferences.Count seneste af @Labels.Number(result.Differed).</p>
+        }
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Dato</th><th>Afstemning</th><th>@result.A.Name</th><th>@result.B.Name</th><th>Resultat</th></tr></thead>
+                <tbody>
+                    @foreach (var d in result.LatestDifferences)
+                    {
+                        <tr>
+                            <td class="nowrap">@Labels.DateShort(d.Vote.Date)</td>
+                            <td><a href="/afstemninger/@d.Vote.VoteId">@d.Vote.Title</a> <span class="muted small">@d.Vote.CaseNumber</span></td>
+                            <td><BallotBadge Type="d.BallotA" Short="true" /></td>
+                            <td><BallotBadge Type="d.BallotB" Short="true" /></td>
+                            <td><ResultBadge Passed="d.Vote.Passed" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "a")] public int? A { get; set; }
+    [SupplyParameterFromQuery(Name = "b")] public int? B { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+
+    private IReadOnlyList<PoliticianListItem> options = [];
+    private IReadOnlyList<PeriodOption> periods = [];
+    private ComparisonResult? result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        options = (await Politicians.SearchAsync(new PoliticianFilter(CurrentOnly: true), 1, 400)).Items;
+        periods = await Site.GetPeriodsWithVotesAsync();
+        if (A is { } a && B is { } b)
+        {
+            result = await Comparisons.CompareAsync(a, b, Period);
+        }
+    }
+}

@@ -50,6 +50,7 @@ public static partial class BiographyParser
                 Constituency = match.Groups["kreds"].Value.Trim().TrimEnd(','),
                 StartDate = start.Value,
                 EndDate = end,
+                IsTemporary = match.Groups["temp"].Success,
             });
         }
 
@@ -79,7 +80,7 @@ public static partial class BiographyParser
     private static partial Regex ConstituencyRegex();
 
     // "Folketingsmedlem for {party} i {kreds}[,] [fra ]{date}[ – {date}]."
-    [GeneratedRegex(@"^(?:Midlertidigt\s+)?[Ff]olketingsmedlem\s+for\s+(?<party>.+?)\s+i\s+(?<kreds>.+?),?\s+(?:fra\s+)?(?<from>\d{1,2}\.\s*\p{L}+\s+\d{4})(?:\s*[–\-]\s*(?<to>\d{1,2}\.\s*\p{L}+\s+\d{4}))?\s*\.?\s*$", RegexOptions.Singleline)]
+    [GeneratedRegex(@"^(?<temp>[Mm]idlertidigt\s+)?[Ff]olketingsmedlem\s+for\s+(?<party>.+?)\s+i\s+(?<kreds>.+?),?\s+(?:fra\s+)?(?<from>\d{1,2}\.\s*\p{L}+\s+\d{4})(?:\s*[–\-]\s*(?<to>\d{1,2}\.\s*\p{L}+\s+\d{4}))?\s*\.?\s*$", RegexOptions.Singleline)]
     private static partial Regex TermRegex();
 
     [GeneratedRegex(@"(?<day>\d{1,2})\.\s*(?<month>\p{L}+)\s+(?<year>\d{4})")]

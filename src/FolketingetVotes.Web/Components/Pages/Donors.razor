@@ -1,0 +1,98 @@
+@page "/bidrag"
+@inject IDonorQueries DonorQueries
+@inject IPartyQueries Parties
+
+<PageTitle>Bidragydere</PageTitle>
+<PageMeta Title="Bidragydere til partierne" Description="Hvem støtter hvilke partier? Alle bidragydere over lovens grænse, som partierne selv har oplyst i deres regnskaber til Folketinget." />
+
+<h1>Bidragydere til partierne</h1>
+<p class="lead">
+    Personer, organisationer og virksomheder, som partierne har oplyst i deres årsregnskaber til Folketinget, fordi bidraget oversteg
+    lovens grænse (20.000 kr. i 2017-niveau, indeksreguleret). Samlet på tværs af partier og år.
+</p>
+<p class="small muted">
+    De fleste partier oplyser kun navn og adresse, så beløb findes kun, hvor regnskabet angiver dem. En stor del af de oplyste bidrag er
+    partiskat fra partiernes egne folketingsmedlemmer; de er markeret. Teksten er læst maskinelt fra scannede PDF'er; klik ind på
+    en bidragyder for kildelinje og sidetal. <a href="/om#bidrag">Læs om metoden</a>.
+</p>
+
+<form class="filters" method="get" action="/bidrag">
+    <label>Navn
+        <input type="search" name="q" value="@Query" placeholder="fx Dansk Industri" />
+    </label>
+    <label>Parti
+        <select name="party">
+            <option value="">Alle</option>
+            @foreach (var p in parties)
+            {
+                <option value="@p.ShortName" selected="@(p.ShortName == Party)">@p.Name (@p.ShortName)</option>
+            }
+        </select>
+    </label>
+    <label>År
+        <select name="year">
+            <option value="">Alle</option>
+            @foreach (var y in years)
+            {
+                <option value="@y" selected="@(y == Year)">@y</option>
+            }
+        </select>
+    </label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else if (result.TotalCount == 0)
+{
+    <p class="muted">Ingen bidragydere fundet. Er partiregnskaberne importeret?</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(result.TotalCount) bidragydere</p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Bidragyder</th><th>Partier</th><th>År</th><th class="num">Poster</th><th class="num">Oplyst beløb i alt</th></tr></thead>
+            <tbody>
+                @foreach (var d in result.Items)
+                {
+                    <tr>
+                        <td>
+                            <a href="/bidrag/@DonorNames.Slug(d.Key)">@d.DisplayName</a>
+                            @if (d.ActorId is { } actorId) { <a class="badge neutral" href="/politikere/@actorId" title="Er eller har været medlem af Folketinget">MF</a> }
+                        </td>
+                        <td>@foreach (var p in d.Parties) { <PartyChip ShortName="@p" /> }</td>
+                        <td class="small nowrap">@(d.FirstYear == d.LastYear ? d.FirstYear.ToString() : $"{d.FirstYear}–{d.LastYear}")</td>
+                        <td class="num">@d.RowCount</td>
+                        <td class="num">@(d.StatedTotal is { } t ? Labels.Money(t) : "–")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 50;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "party")] public string? Party { get; set; }
+    [SupplyParameterFromQuery(Name = "year")] public int? Year { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<DonorListItem>? result;
+    private IReadOnlyList<PartyListItem> parties = [];
+    private IReadOnlyList<int> years = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        parties = await Parties.ListAsync();
+        years = await DonorQueries.GetYearsAsync();
+        result = await DonorQueries.SearchAsync(new DonorFilter(Query, Party, Year), Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build("/bidrag", ("q", Query), ("party", Party), ("year", Year?.ToString()), ("page", page.ToString()));
+}

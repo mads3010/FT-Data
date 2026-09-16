@@ -11,6 +11,7 @@
 else
 {
     <PageTitle>@profile.Name – stemmehistorik</PageTitle>
+    <PageMeta Title="@profile.Name" Description="@($"{Labels.Number(profile.Overall.Total)} afstemninger, fremmøde {Labels.Percent(profile.Overall.AttendanceRate)}, stemte som gruppen {Labels.Percent(profile.Overall.PartyAgreementRate)}.")" />
     <p class="muted small"><a href="/politikere">Politikere</a></p>
     <div class="profile-head">
         <Avatar PictureUrl="@profile.PictureUrl" Name="@profile.Name" Large="true" />
@@ -19,20 +20,49 @@ else
             <p class="lead">
                 <PartyChip ShortName="@profile.CurrentPartyShortName" />
                 @(profile.IsCurrentMember ? "Nuværende medlem af Folketinget" : "Tidligere medlem af Folketinget")
+                @if (profile.BornYear is { } born) { <span class="muted">· født @born</span> }
             </p>
+            <p class="small"><a href="/sammenlign?a=@Id">Sammenlign med en anden politiker →</a></p>
         </div>
     </div>
 
     <div class="tiles">
         <StatTile Label="Afstemninger" Value="@Labels.Number(profile.Overall.Total)" Note="registreret siden 2004" />
-        <StatTile Label="Fremmøde" Value="@Labels.Percent(profile.Overall.AttendanceRate)" Note="@($"{Labels.Number(profile.Overall.AbsentCount)} gange fraværende")" />
+        @if (profile.Overall.HasMinisterPeriods)
+        {
+            <StatTile Label="Fremmøde uden for ministertid" Value="@Labels.Percent(profile.Overall.AttendanceRateExcludingMinisterPeriods)" Note="@($"{Labels.Number(profile.Overall.MinisterTotal)} afstemninger faldt i ministerperioder")" />
+        }
+        else
+        {
+            <StatTile Label="Fremmøde" Value="@Labels.Percent(profile.Overall.AttendanceRate)" Note="@($"{Labels.Number(profile.Overall.AbsentCount)} gange fraværende")" />
+        }
         <StatTile Label="Stemte som gruppen" Value="@Labels.Percent(profile.Overall.PartyAgreementRate)" Note="@($"{Labels.Number(profile.Overall.AgainstPartyCount)} afvigelser")" />
         <StatTile Label="For / imod / hverken" Value="@($"{Labels.Number(profile.Overall.ForCount)} / {Labels.Number(profile.Overall.AgainstCount)} / {Labels.Number(profile.Overall.AbstainCount)}")" />
     </div>
     <p class="small muted">
         Fravær har mange legitime årsager (ministerrejser, sygdom, orlov, og Folketingets "clearing"-aftaler, hvor par af medlemmer bliver væk samtidig).
+        @if (profile.Overall.HasMinisterPeriods) { <text>Ministre deltager sjældent i afstemninger; fremmøde i alle @Labels.Number(profile.Overall.Total) afstemninger inkl. ministertid: @Labels.Percent(profile.Overall.AttendanceRate). </text> }
         "Stemte som gruppen" sammenligner kun med gruppens flertal blandt de tilstedeværende. <a href="/om">Læs om metoden</a>.
     </p>
+
+    @if (profile.MinisterPeriods.Count > 0 || profile.TemporaryPeriods.Count > 0 || profile.CurrentCommittees.Count > 0)
+    {
+        <h2>Hverv</h2>
+        <dl class="facts">
+            @foreach (var r in profile.MinisterPeriods)
+            {
+                <dt>Minister</dt><dd>@r.Title, @Labels.Date(r.StartDate) – @(r.EndDate is null ? "nu" : Labels.Date(r.EndDate.Value))</dd>
+            }
+            @foreach (var r in profile.TemporaryPeriods)
+            {
+                <dt>Stedfortræder</dt><dd>@r.Title, @Labels.Date(r.StartDate) – @(r.EndDate is null ? "nu" : Labels.Date(r.EndDate.Value))</dd>
+            }
+            @if (profile.CurrentCommittees.Count > 0)
+            {
+                <dt>Udvalg (nu)</dt><dd>@string.Join(", ", profile.CurrentCommittees)</dd>
+            }
+        </dl>
+    }
 
     <h2>Gruppetilhørsforhold</h2>
     @if (profile.Memberships.Count == 0)
@@ -46,6 +76,13 @@ else
 
     <h2>Stemmer pr. folketingsår</h2>
     <PeriodStackChart Rows="profile.PerPeriod" />
+
+    @if (profile.Proposals.Count > 0)
+    {
+        <h2>Forslag stillet (@profile.Proposals.Count)</h2>
+        <p class="small muted">Lov- og beslutningsforslag, hvor medlemmet er registreret som forslagsstiller eller som ansvarlig minister.</p>
+        <CaseList Cases="profile.Proposals" ShowRole="true" />
+    }
 
     <h2>Stemmehistorik</h2>
     <form class="filters" method="get" action="/politikere/@Id">

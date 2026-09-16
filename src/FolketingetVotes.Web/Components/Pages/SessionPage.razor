@@ -1,0 +1,100 @@
+@page "/folketingsaar/{Id:int}"
+@inject ISessionQueries Sessions
+@inject NavigationManager Navigation
+
+@if (detail is null)
+{
+    <PageTitle>Folketingsår</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    var s = detail.Session;
+    <PageTitle>@s.Title – folketingsår</PageTitle>
+    <PageMeta Title="@($"Folketingsåret {s.Title}")" Description="@($"{s.VoteCount} afstemninger, {Labels.Percent(s.PassedRate)} vedtaget, {Labels.Percent(s.UnanimousRate)} enstemmige.")" />
+    <p class="muted small"><a href="/folketingsaar">Folketingsår</a></p>
+    <h1>@s.Title</h1>
+    <p class="lead">@Labels.DateShort(s.StartDate)@(s.EndDate is { } e ? " – " + Labels.DateShort(e) : "")</p>
+
+    <div class="tiles">
+        <StatTile Label="Afstemninger" Value="@Labels.Number(s.VoteCount)" />
+        <StatTile Label="Vedtaget" Value="@Labels.Percent(s.PassedRate)" Note="@($"{Labels.Number(s.PassedCount)} afstemninger")" />
+        <StatTile Label="Enstemmige" Value="@Labels.Percent(s.UnanimousRate)" Note="ingen imod eller hverken/eller" />
+        <StatTile Label="Grupper" Value="@detail.Parties.Count.ToString()" />
+    </div>
+    <p><a href="/afstemninger?period=@Id">Alle afstemninger i @s.Title →</a></p>
+
+    <h2>Partierne</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Gruppe</th><th class="num">Medlemmer</th><th class="num">Stemmer</th><th>Fremmøde</th><th>Sammenhold</th></tr></thead>
+            <tbody>
+                @foreach (var p in detail.Parties)
+                {
+                    <tr>
+                        <td><PartyChip ShortName="@p.ShortName" Name="@p.Name" /> <span class="small muted">@p.Name</span></td>
+                        <td class="num">@p.Members</td>
+                        <td class="num">@Labels.Number(p.Ballots)</td>
+                        <td style="min-width:170px"><ShareBar Label="@Labels.Percent(p.AttendanceRate)" Value="p.AttendanceRate" Css="for" /></td>
+                        <td style="min-width:170px"><ShareBar Label="@Labels.Percent(p.CohesionRate)" Value="p.CohesionRate" Css="abstain" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted">Medlemmer tæller alle, der afgav mindst én stemme for gruppen i året (inkl. stedfortrædere). Sammenhold nær 100 % er normalt i Folketinget.</p>
+
+    @if (detail.AgreementParties.Count > 1)
+    {
+        <h2>Hvor ofte stemte grupperne ens?</h2>
+        <p class="small muted">Andel af afstemninger, hvor de to gruppers flertal faldt ens, blandt de afstemninger hvor begge havde et flertal. Mørkere = oftere ens.</p>
+        <div class="table-wrap">
+            <table class="data matrix">
+                <thead><tr><th></th>@foreach (var p in detail.AgreementParties) { <th class="num">@p</th> }</tr></thead>
+                <tbody>
+                    @foreach (var a in detail.AgreementParties)
+                    {
+                        <tr>
+                            <th><PartyChip ShortName="@a" /></th>
+                            @foreach (var b in detail.AgreementParties)
+                            {
+                                if (a == b)
+                                {
+                                    <td class="num muted">–</td>
+                                }
+                                else
+                                {
+                                    var ag = detail.Agreement(a, b);
+                                    var rate = ag?.Rate;
+                                    <td class="num" style="background: color-mix(in srgb, var(--for) @(Math.Round((rate ?? 0) * 100))%, var(--surface)); color: @((rate ?? 0) > 0.6 ? "#fff" : "var(--text)")" title="@a og @b: enige i @ag?.AgreedVotes af @ag?.SharedVotes afstemninger">@Labels.Percent(rate)</td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (detail.ClosestVotes.Count > 0)
+    {
+        <h2>Tætteste afstemninger</h2>
+        <p class="small muted">Sorteret efter forskellen mellem for og imod.</p>
+        <VoteList Votes="detail.ClosestVotes" />
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private SessionDetail? detail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        detail = await Sessions.GetAsync(Id);
+        if (detail is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+}

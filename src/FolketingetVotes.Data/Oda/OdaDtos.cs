@@ -122,6 +122,18 @@ public sealed record OdaStemme(
     [property: JsonPropertyName("aktørid")] int ActorId,
     [property: JsonPropertyName("opdateringsdato")] DateTime UpdatedAt) : IOdaRecord;
 
+public sealed record OdaEmneord(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("typeid")] int TypeId,
+    [property: JsonPropertyName("emneord")] string? Name,
+    [property: JsonPropertyName("opdateringsdato")] DateTime UpdatedAt) : IOdaRecord;
+
+public sealed record OdaEmneordSag(
+    [property: JsonPropertyName("id")] int Id,
+    [property: JsonPropertyName("emneordid")] int KeywordId,
+    [property: JsonPropertyName("sagid")] int CaseId,
+    [property: JsonPropertyName("opdateringsdato")] DateTime UpdatedAt) : IOdaRecord;
+
 /// <summary>Shape shared by the code tables; the display column is named type/rolle/status/kategori depending on the set.</summary>
 public sealed record OdaLookup(
     [property: JsonPropertyName("id")] int Id,

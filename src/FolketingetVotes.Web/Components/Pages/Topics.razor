@@ -1,0 +1,54 @@
+@page "/emner"
+@inject ITopicQueries TopicQueries
+
+<PageTitle>Emner</PageTitle>
+<PageMeta Title="Emner" Description="Folketingets afstemninger fordelt på emneord: hvad stemmes der om, og hvor står partierne." />
+
+<h1>Emner</h1>
+<p class="lead">Folketingets administration knytter emneord til hver sag. Her kan du finde afstemninger efter emne og se, hvordan partiernes flertal faldt ved de endelige vedtagelser.</p>
+
+<form class="filters" method="get" action="/emner">
+    <label>Søg i emneord
+        <input type="search" name="q" value="@Query" placeholder="fx klima, skat, sundhed" />
+    </label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(result.TotalCount) emneord med afstemninger</p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Emneord</th><th>Type</th><th class="num">Sager</th><th class="num">Afstemninger</th></tr></thead>
+            <tbody>
+                @foreach (var t in result.Items)
+                {
+                    <tr>
+                        <td><a href="/emner/@t.KeywordId">@t.Name</a></td>
+                        <td class="small muted">@Labels.KeywordType(t.TypeId)</td>
+                        <td class="num">@Labels.Number(t.CaseCount)</td>
+                        <td class="num">@Labels.Number(t.VoteCount)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 50;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<TopicListItem>? result;
+
+    protected override async Task OnInitializedAsync() => result = await TopicQueries.SearchAsync(Query, Math.Max(1, Page ?? 1), PageSize);
+
+    private string Href(int page) => QueryString.Build("/emner", ("q", Query), ("page", page.ToString()));
+}

@@ -16,6 +16,7 @@ public sealed class StatsRefresher(IDbContextFactory<FolketingetDbContext> dbFac
     [
         "010_parties.sql",
         "020_party_memberships.sql",
+        "025_role_periods.sql",
         "030_materialized_views.sql",
     ];
 

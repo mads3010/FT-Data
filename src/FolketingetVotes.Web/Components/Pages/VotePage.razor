@@ -11,6 +11,7 @@ else
 {
     var v = detail.Vote;
     <PageTitle>@v.Title – afstemning @Labels.DateShort(v.Date)</PageTitle>
+    <PageMeta Title="@($"{v.Title} ({Labels.Result(v.Passed).ToLowerInvariant()})")" Description="@($"Folketinget {Labels.Date(v.Date)}: for {v.ForCount}, imod {v.AgainstCount}, hverken {v.AbstainCount}, fraværende {v.AbsentCount}.")" />
 
     <p class="muted small">
         <a href="/afstemninger">Afstemninger</a> › @detail.PeriodTitle
@@ -90,7 +91,14 @@ else
             </tbody>
         </table>
     </div>
-    <p class="small muted">Rådata: <a href="/api/v1/votes/@Id">JSON</a></p>
+    <h2>Kilder</h2>
+    <dl class="facts">
+        @if (detail.TranscriptUrl is not null)
+        {
+            <dt>Referat af mødet</dt><dd><a href="@detail.TranscriptUrl" rel="noopener">Folketingstidende, møde nr. @detail.MeetingNumber (PDF)</a> – forhandlingen og afstemningen ordret</dd>
+        }
+        <dt>Åbne data</dt><dd><a href="https://oda.ft.dk/api/Afstemning(@Id)?$expand=Stemme&$format=json" rel="noopener">oda.ft.dk</a> · <a href="/api/v1/votes/@Id">JSON</a></dd>
+    </dl>
 }
 
 @code {

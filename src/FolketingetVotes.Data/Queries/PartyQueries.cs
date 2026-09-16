@@ -10,13 +10,12 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
 {
     public async Task<IReadOnlyList<PartyListItem>> ListAsync(CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
         var items = await (
             from p in db.Parties
             select new PartyListItem(
                 p.ShortName,
                 p.Name,
-                db.PartyMemberships.Where(pm => pm.PartyShortName == p.ShortName && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)).Select(pm => pm.PersonId).Distinct().Count(),
+                db.CurrentMembers.Count(cm => cm.PartyShortName == p.ShortName),
                 p.FirstSeen,
                 p.LastSeen)).ToListAsync(cancellationToken);
         return items.OrderByDescending(i => i.CurrentMembers).ThenByDescending(i => i.LastSeen).ThenBy(i => i.Name).ToList();
@@ -30,14 +29,25 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
             return null;
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
-        var members = await (
-            from pm in db.PartyMemberships
-            join a in db.Actors on pm.PersonId equals a.Id
-            where pm.PartyShortName == shortName && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)
-            group new { a, pm } by new { a.Id, a.Name, a.PictureUrl } into g
-            orderby g.Key.Name
-            select new PartyMemberRow(g.Key.Id, g.Key.Name, g.Key.PictureUrl, g.Min(x => x.pm.StartDate))).ToListAsync(cancellationToken);
+        var current = await (
+            from cm in db.CurrentMembers
+            join a in db.Actors on cm.PersonId equals a.Id
+            where cm.PartyShortName == shortName
+            orderby a.Name
+            select new { a.Id, a.Name, a.PictureUrl, cm.StartDate }).ToListAsync(cancellationToken);
+
+        // "Since" is the start of the member's unbroken run in this group, not the current session's start.
+        var ids = current.Select(c => c.Id).ToArray();
+        var spans = await db.PartyMemberships.AsNoTracking()
+            .Where(pm => ids.Contains(pm.PersonId) && pm.Source != PartyMembershipSource.BiographyParty)
+            .OrderBy(pm => pm.PersonId).ThenBy(pm => pm.StartDate)
+            .Select(pm => new { pm.PersonId, pm.PartyShortName, pm.StartDate, pm.EndDate })
+            .ToListAsync(cancellationToken);
+        var since = spans.GroupBy(s => s.PersonId).ToDictionary(
+            g => g.Key,
+            g => PoliticianQueries.MergeConsecutive(g.Select(s => new PartyMembershipRow(s.PartyShortName, s.PartyShortName, s.StartDate, s.EndDate)).ToList())
+                .LastOrDefault(m => m.PartyShortName == shortName)?.StartDate);
+        var members = current.Select(c => new PartyMemberRow(c.Id, c.Name, c.PictureUrl, since.GetValueOrDefault(c.Id) ?? c.StartDate)).ToList();
 
         var perPeriod = await (
             from s in db.PartyStats

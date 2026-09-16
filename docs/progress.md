@@ -2,6 +2,13 @@
 
 Newest first. Keep this short; details belong in features.md / roadmap.md.
 
+## 2026-09-16 (v0.2) — audit fixes and new views
+
+- Fixed "current members" (233 → 179) by defining it from the latest sitting day's roster; politician list defaults to current members; birth years shown for namesakes.
+- Added ministerial periods and attendance excluding ministerial time, committee memberships and proposals on profiles; transcript links on vote pages.
+- Added topics (Emneord sync), sessions with agreement matrix and closest votes, donor index, case search, comparison, Atom feed, sitemap, Open Graph tags.
+- Local Postgres now runs as a Homebrew service; `deploy/macos/install-sync-agent.sh` schedules an hourly sync via launchd.
+
 ## 2026-09-16 (later) — party accounts, OCR, sharing
 
 - Found the published party-account PDFs are scans; built `tools/ocr-pdf` (Apple Vision, Danish) and OCR sidecars; fixed a memory leak that killed it after ~100 pages.

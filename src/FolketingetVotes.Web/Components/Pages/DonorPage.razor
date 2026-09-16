@@ -1,0 +1,53 @@
+@page "/bidrag/{Slug}"
+@inject IDonorQueries Donors
+@inject NavigationManager Navigation
+
+@if (donor is null)
+{
+    <PageTitle>Bidragyder</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    <PageTitle>@donor.DisplayName – bidrag til partier</PageTitle>
+    <PageMeta Title="@donor.DisplayName" Description="@($"Oplyst som bidragyder i {donor.Rows.Count} partiregnskaber ({string.Join(", ", donor.Rows.Select(r => r.PartyShortName ?? r.PartyName).Distinct())}).")" />
+    <p class="muted small"><a href="/bidrag">Bidragydere</a></p>
+    <h1>@donor.DisplayName</h1>
+    @if (donor.ActorId is { } actorId)
+    {
+        <p class="lead">Er eller har været medlem af Folketinget: <a href="/politikere/@actorId">se stemmehistorik</a>. Bidrag fra medlemmer er typisk partiskat.</p>
+    }
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>År</th><th>Parti</th><th>Adresse (som oplyst)</th><th class="num">Beløb</th><th>Kilde</th></tr></thead>
+            <tbody>
+                @foreach (var r in donor.Rows)
+                {
+                    <tr title="@r.RawText">
+                        <td>@r.Year</td>
+                        <td>@if (r.PartyShortName is not null) { <PartyChip ShortName="@r.PartyShortName" Name="@r.PartyName" /> } else { @r.PartyName }</td>
+                        <td class="small muted">@r.DonorAddress</td>
+                        <td class="num">@Labels.Money(r.Amount)</td>
+                        <td class="small muted">@r.SourceFile, s. @r.SourcePage@if (r.Note is not null) { <div>"@r.Note"</div> }</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted">Hold musen over en række for at se den rå kildelinje fra regnskabet.</p>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private DonorDetail? donor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        donor = await Donors.GetAsync(DonorNames.FromSlug(Slug));
+        if (donor is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+}

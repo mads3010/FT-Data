@@ -1,6 +1,7 @@
 using System.Net;
 using FolketingetVotes.Core.Queries;
 using FolketingetVotes.Core.ReadModels;
+using FolketingetVotes.Core.Entities;
 using FolketingetVotes.Core.Enums;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -25,6 +26,16 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     [InlineData("/partier", "Røde Parti")]
     [InlineData("/partier/RØD", "Fremmøde og sammenhold")]
     [InlineData("/sager/500", "Hvem står bag")]
+    [InlineData("/sager?q=pr%C3%B8ve", "Prøvesag")]
+    [InlineData("/emner", "prøveemne")]
+    [InlineData("/emner/9", "Partiernes flertal")]
+    [InlineData("/folketingsaar", "2023-24")]
+    [InlineData("/folketingsaar/1", "stemte grupperne ens")]
+    [InlineData("/bidrag", "Prøvegiver")]
+    [InlineData("/bidrag/pr%C3%B8vegiver-a-s", "Prøvegiver A/S")]
+    [InlineData("/sammenlign?a=1&b=3", "Stemte ens")]
+    [InlineData("/feed.xml", "<feed")]
+    [InlineData("/sitemap.xml", "/afstemninger/1000")]
     [InlineData("/om", "metoden")]
     public async Task Pages_render(string path, string expectedText)
     {
@@ -39,6 +50,9 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     [InlineData("/politikere/999999")]
     [InlineData("/partier/NOPE")]
     [InlineData("/sager/999999")]
+    [InlineData("/emner/999999")]
+    [InlineData("/folketingsaar/999999")]
+    [InlineData("/bidrag/ukendt")]
     public async Task Missing_entities_return_404(string path)
     {
         var response = await _client.GetAsync(new Uri(path, UriKind.Relative));
@@ -74,6 +88,14 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
                 services.RemoveAll<IPartyQueries>();
                 services.RemoveAll<ICaseQueries>();
                 services.RemoveAll<ISiteQueries>();
+                services.RemoveAll<ITopicQueries>();
+                services.RemoveAll<ISessionQueries>();
+                services.RemoveAll<IDonorQueries>();
+                services.RemoveAll<IComparisonQueries>();
+                services.AddSingleton<ITopicQueries, FakeData>();
+                services.AddSingleton<ISessionQueries, FakeData>();
+                services.AddSingleton<IDonorQueries, FakeData>();
+                services.AddSingleton<IComparisonQueries, FakeData>();
                 services.AddSingleton<IVoteQueries, FakeData>();
                 services.AddSingleton<IPoliticianQueries, FakeData>();
                 services.AddSingleton<IPartyQueries, FakeData>();
@@ -83,7 +105,7 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
         }
     }
 
-    private sealed class FakeData : IVoteQueries, IPoliticianQueries, IPartyQueries, ICaseQueries, ISiteQueries
+    private sealed class FakeData : IVoteQueries, IPoliticianQueries, IPartyQueries, ICaseQueries, ISiteQueries, ITopicQueries, ISessionQueries, IDonorQueries, IComparisonQueries
     {
         private static readonly DateTime Date = new(2024, 3, 5, 10, 0, 0);
         private static readonly VoteListItem Vote = new(1000, Date, VoteType.FinalPassage, true, 500, "L 1", "Prøvesag", "3. behandling", 2, 1, 0, 1);
@@ -94,20 +116,28 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
 
         public Task<VoteDetail?> GetAsync(int voteId, CancellationToken ct = default)
             => Task.FromResult(voteId == 1000
-                ? new VoteDetail(Vote, "Forslaget er vedtaget.", null, 100, "Møde i Salen", 1, "2023-24", Case,
+                ? new VoteDetail(Vote, "Forslaget er vedtaget.", null, 100, "Møde i Salen", "1", 1, "2023-24", "20231", Case,
                     [new PartyVoteBreakdown("RØD", "Røde Parti", 2, 1, 0, 0), new PartyVoteBreakdown("BLÅ", "Blå Parti", 0, 0, 0, 1)],
                     [new BallotRow(1, "Anna Rødsen", "RØD", BallotType.For, false), new BallotRow(3, "Rebel Rødsen", "RØD", BallotType.Against, true), new BallotRow(4, "Dorte Blåsen", "BLÅ", BallotType.Absent, false)])
                 : null);
 
         public Task<PagedResult<PoliticianListItem>> SearchAsync(PoliticianFilter filter, int page, int pageSize, CancellationToken ct = default)
-            => Task.FromResult(new PagedResult<PoliticianListItem>([new PoliticianListItem(1, "Anna Rødsen", "RØD", null, true, 1, 1.0)], 1, pageSize, 1));
+            => Task.FromResult(new PagedResult<PoliticianListItem>([Anna, Rebel], 1, pageSize, 2));
+
+        private static readonly PoliticianListItem Anna = new(1, "Anna Rødsen", "RØD", null, true, 1, 1.0, 1970);
+        private static readonly PoliticianListItem Rebel = new(3, "Rebel Rødsen", "RØD", null, true, 1, 1.0, 1980);
 
         public Task<PoliticianProfile?> GetProfileAsync(int actorId, CancellationToken ct = default)
             => Task.FromResult(actorId == 1
                 ? new PoliticianProfile(1, "Anna Rødsen", null, "RØD", true,
                     [new PartyMembershipRow("RØD", "Røde Parti", new DateOnly(2023, 10, 3), null)],
                     new PoliticianStats(1, 1, 0, 0, 0, 1, 0),
-                    [new PoliticianPeriodStatsRow(1, "2023-24", new DateTime(2023, 10, 3), new PoliticianStats(1, 1, 0, 0, 0, 1, 0))])
+                    [new PoliticianPeriodStatsRow(1, "2023-24", new DateTime(2023, 10, 3), new PoliticianStats(1, 1, 0, 0, 0, 1, 0))],
+                    1970,
+                    [new RolePeriodRow(RolePeriodKind.Minister, "prøveministeren", new DateOnly(2022, 12, 15), null)],
+                    [],
+                    ["Prøveudvalget"],
+                    [new CaseListItem(500, CaseType.Bill, "L 1", "Prøvesag", "Vedtaget", 1, "2023-24", 1, "Forslagsstiller (reg.)")])
                 : null);
 
         public Task<PagedResult<PoliticianBallotRow>> GetBallotsAsync(int actorId, BallotFilter filter, int page, int pageSize, CancellationToken ct = default)
@@ -128,8 +158,48 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
                 ? new CaseDetail(Case, "Et resumé.", "Forslaget blev vedtaget.", 123, new DateTime(2024, 3, 20), null,
                     [new CaseActorRow(1, "Anna Rødsen", 19, "Forslagsstiller (reg.)", ActorType.Person)],
                     [new CaseStepRow(700, "3. behandling", new DateTime(2024, 3, 5), "3. behandling", "Vedtaget")],
-                    [Vote])
+                    [Vote],
+                    [new KeywordRow(9, "prøveemne", 3)])
                 : null);
+
+        public Task<PagedResult<CaseListItem>> SearchAsync(CaseFilter filter, int page, int pageSize, CancellationToken ct = default)
+            => Task.FromResult(new PagedResult<CaseListItem>([new CaseListItem(500, CaseType.Bill, "L 1", "Prøvesag", "Vedtaget", 1, "2023-24", 1, null)], 1, pageSize, 1));
+
+        public Task<PagedResult<TopicListItem>> SearchAsync(string? query, int page, int pageSize, CancellationToken ct = default)
+            => Task.FromResult(new PagedResult<TopicListItem>([new TopicListItem(9, "prøveemne", 3, 1, 1)], 1, pageSize, 1));
+
+        public Task<TopicDetail?> GetAsync(int keywordId, int page, int pageSize, CancellationToken ct = default)
+            => Task.FromResult(keywordId == 9
+                ? new TopicDetail(9, "prøveemne", 3, 1, [new PartyTopicPosition("RØD", "Røde Parti", 1, 0, 0)], new PagedResult<VoteListItem>([Vote], 1, pageSize, 1))
+                : null);
+
+        private static readonly SessionListItem Session = new(1, "20231", "2023-24", new DateTime(2023, 10, 3), new DateTime(2024, 10, 1), 1, 1, 0);
+
+        Task<IReadOnlyList<SessionListItem>> ISessionQueries.ListAsync(CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<SessionListItem>>([Session]);
+
+        Task<SessionDetail?> ISessionQueries.GetAsync(int periodId, CancellationToken ct)
+            => Task.FromResult(periodId == 1
+                ? new SessionDetail(Session, [new SessionPartyRow("RØD", "Røde Parti", 3, 3, 3, 2, 1), new SessionPartyRow("BLÅ", "Blå Parti", 1, 1, 0, 0, 0)], [Vote], ["RØD", "BLÅ"], [new PartyAgreement("RØD", "BLÅ", 1, 0)])
+                : null);
+
+        public Task<PagedResult<DonorListItem>> SearchAsync(DonorFilter filter, int page, int pageSize, CancellationToken ct = default)
+            => Task.FromResult(new PagedResult<DonorListItem>([new DonorListItem("prøvegiver a s", "Prøvegiver A/S", ["RØD"], 2023, 2023, 1, 10_000m, null)], 1, pageSize, 1));
+
+        Task<DonorDetail?> IDonorQueries.GetAsync(string key, CancellationToken ct)
+            => Task.FromResult(key == "prøvegiver a s"
+                ? new DonorDetail(key, "Prøvegiver A/S", null, [new DonorContributionRow(2023, "Røde Parti", "RØD", "Vej 1, 1000 By", 10_000m, "Bidrag over grænsen", 4, "test.pdf", "Prøvegiver A/S, Vej 1, 1000 By 10.000 kr.")])
+                : null);
+
+        public Task<IReadOnlyList<int>> GetYearsAsync(CancellationToken ct = default) => Task.FromResult<IReadOnlyList<int>>([2023]);
+
+        public Task<ComparisonResult?> CompareAsync(int actorA, int actorB, int? periodId, CancellationToken ct = default)
+            => Task.FromResult(actorA == 1 && actorB == 3
+                ? new ComparisonResult(Anna, Rebel, 1, 1, 0, [new ComparisonDifference(Vote, BallotType.For, BallotType.Against)])
+                : null);
+
+        public Task<IReadOnlyList<SitemapEntry>> GetSitemapAsync(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<SitemapEntry>>([new SitemapEntry("/", null), new SitemapEntry("/afstemninger/1000", Date)]);
 
         public Task<SiteOverview> GetOverviewAsync(CancellationToken ct = default)
             => Task.FromResult(new SiteOverview(DateTime.UtcNow, 1, 4, 4, Date, Date, [Vote]));

@@ -1,0 +1,67 @@
+@page "/sager"
+@inject ICaseQueries CaseQueries
+@inject ISiteQueries Site
+
+<PageTitle>Sager</PageTitle>
+<PageMeta Title="Lovforslag og beslutningsforslag" Description="Søg i Folketingets lovforslag og beslutningsforslag siden 2004, med status og afstemninger." />
+
+<h1>Lovforslag og beslutningsforslag</h1>
+<p class="lead">Søg på titel, nummer eller emneord. Kun en del af sagerne ender i en afstemning i salen; de øvrige afgøres uden afstemning eller bortfalder.</p>
+
+<form class="filters" method="get" action="/sager">
+    <label>Søg
+        <input type="search" name="q" value="@Query" placeholder="fx L 41, klima, pension" />
+    </label>
+    <label>Folketingsår
+        <select name="period">
+            <option value="">Alle</option>
+            @foreach (var p in periods)
+            {
+                <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option>
+            }
+        </select>
+    </label>
+    <label>Type
+        <select name="type">
+            <option value="">Lov- og beslutningsforslag</option>
+            <option value="@CaseType.Bill" selected="@(TypeFilter == CaseType.Bill)">Lovforslag</option>
+            <option value="@CaseType.Resolution" selected="@(TypeFilter == CaseType.Resolution)">Beslutningsforslag</option>
+        </select>
+    </label>
+    <label class="check"><input type="checkbox" name="votes" value="true" checked="@OnlyWithVotes" /> Kun sager med afstemning</label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(result.TotalCount) sager</p>
+    <CaseList Cases="result.Items" />
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 30;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? TypeText { get; set; }
+    [SupplyParameterFromQuery(Name = "votes")] public bool OnlyWithVotes { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<CaseListItem>? result;
+    private IReadOnlyList<PeriodOption> periods = [];
+
+    private CaseType? TypeFilter => Enum.TryParse<CaseType>(TypeText, true, out var t) ? t : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        periods = await Site.GetPeriodsWithVotesAsync();
+        result = await CaseQueries.SearchAsync(new CaseFilter(Query, Period, TypeFilter, OnlyWithVotes), Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build("/sager", ("q", Query), ("period", Period?.ToString()), ("type", TypeText), ("votes", OnlyWithVotes ? "true" : null), ("page", page.ToString()));
+}

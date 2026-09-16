@@ -13,4 +13,7 @@ public sealed class BiographyMembership
     public string? Constituency { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
+
+    /// <summary>"Midlertidigt folketingsmedlem": served as a substitute (stedfortræder) during this term.</summary>
+    public bool IsTemporary { get; set; }
 }

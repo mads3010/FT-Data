@@ -26,4 +26,7 @@ public sealed class Actor : IHasId
 
     /// <summary>Party short name parsed from the biography XML (partyShortname), if any.</summary>
     public string? BiographyPartyShortName { get; set; }
+
+    /// <summary>Date of birth parsed from the biography XML (born), if any; used to tell namesakes apart.</summary>
+    public DateOnly? Born { get; set; }
 }

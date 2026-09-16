@@ -16,6 +16,8 @@ All tables use snake_case (EFCore.NamingConventions). Ids are the oda.ft.dk ids;
 | `votes` | Afstemning | `number`, `conclusion`, `passed`, `type_id`, `meeting_id`, `case_step_id` |
 | `ballots` | Stemme | `vote_id`, `actor_id`, `type_id` (1 for, 2 against, 3 absent, 4 abstain) |
 | `lookups` | 12 code tables | `(kind, id)` → `name` |
+| `keywords` | Emneord | `type_id` (1 sagsområde, 2 free, 3 controlled), `name` |
+| `case_keywords` | EmneordSag | `case_id`, `keyword_id` |
 | `sync_states` | — | per entity: `full_load_completed`, `last_id`, `last_updated_at`, run times, `rows_upserted` |
 
 Every synced row keeps `updated_at` = the API's `opdateringsdato`.
@@ -26,7 +28,8 @@ Every synced row keeps `updated_at` = the API's `opdateringsdato`.
 |---|---|
 | `parties` | one row per `group_short_name`: display name, latest group actor, first/last seen |
 | `party_memberships` | person × party span: `party_short_name`, `period_id`, `start_date`, `end_date`, `source` (1 API relation, 2 biography term, 3 biography party, undated) |
-| `biography_memberships` | terms parsed from each person's biography: `party_name`, `party_short_name`, `constituency`, `start_date`, `end_date` (written by the actor sync) |
+| `biography_memberships` | terms parsed from each person's biography: `party_name`, `party_short_name`, `constituency`, `start_date`, `end_date`, `is_temporary` (written by the actor sync) |
+| `role_periods` | dated roles that change how a record reads: kind 1 minister (from ministertitel relations), kind 2 temporary member (currently none in the data) |
 
 ## Materialized views
 
@@ -37,6 +40,8 @@ Every synced row keeps `updated_at` = the API's `opdateringsdato`.
 | `mv_vote_party_breakdown` | vote × party | counts + `majority_ballot_type` (NULL on tie / nobody present) |
 | `mv_politician_stats` | person × session | counts, `with_party_count`, `against_party_count` |
 | `mv_party_stats` | party × session | `members`, `ballots`, `present_ballots`, `with_majority`, `against_majority` |
+| `mv_current_members` | person | everyone registered in the latest sitting day's votes: `party_short_name`, `start_date` |
+| `mv_topic_stats` | keyword | `case_count`, `vote_count` |
 
 ## Application tables
 

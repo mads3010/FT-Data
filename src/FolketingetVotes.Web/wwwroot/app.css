@@ -170,3 +170,7 @@ pre.conclusion { white-space: pre-wrap; font-family: inherit; background: var(--
   .list li { grid-template-columns: 1fr; }
   .mini-stack { width: 100%; }
 }
+
+/* ---------- Agreement matrix ---------- */
+table.matrix th { position: sticky; left: 0; }
+table.matrix td.num { font-variant-numeric: tabular-nums; font-size: 0.8rem; min-width: 52px; }

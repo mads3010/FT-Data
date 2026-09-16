@@ -80,8 +80,37 @@ public static class ApiEndpoints
 
         api.MapGet("/cases/{id:int}", async (int id, ICaseQueries cases, CancellationToken ct) =>
             await cases.GetAsync(id, ct) is { } detail ? Results.Ok(detail) : Results.NotFound());
+        api.MapGet("/cases", async (ICaseQueries cases, [FromQuery(Name = "q")] string? query, [FromQuery] int? period, [FromQuery] CaseType? type, CancellationToken ct, [FromQuery] bool votes = false, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            Results.Ok(await cases.SearchAsync(new CaseFilter(query, period, type, votes), Clamp(page), ClampSize(pageSize), ct)));
+        api.MapGet("/topics", async (ITopicQueries topics, [FromQuery(Name = "q")] string? query, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            Results.Ok(await topics.SearchAsync(query, Clamp(page), ClampSize(pageSize), ct)));
+        api.MapGet("/topics/{id:int}", async (int id, ITopicQueries topics, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            await topics.GetAsync(id, Clamp(page), ClampSize(pageSize), ct) is { } topic ? Results.Ok(topic) : Results.NotFound());
+        api.MapGet("/sessions", async (ISessionQueries sessions, CancellationToken ct) => Results.Ok(await sessions.ListAsync(ct)));
+        api.MapGet("/sessions/{id:int}", async (int id, ISessionQueries sessions, CancellationToken ct) =>
+            await sessions.GetAsync(id, ct) is { } session ? Results.Ok(session) : Results.NotFound());
+        api.MapGet("/donors", async (IDonorQueries donors, [FromQuery(Name = "q")] string? query, [FromQuery] string? party, [FromQuery] int? year, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            Results.Ok(await donors.SearchAsync(new DonorFilter(query, party, year), Clamp(page), ClampSize(pageSize), ct)));
+        api.MapGet("/compare", async (IComparisonQueries comparisons, [FromQuery] int a, [FromQuery] int b, [FromQuery] int? period, CancellationToken ct) =>
+            await comparisons.CompareAsync(a, b, period, ct) is { } result ? Results.Ok(result) : Results.NotFound());
+
+        app.MapGet("/feed.xml", async (IVoteQueries votes, HttpContext http, CancellationToken ct) =>
+        {
+            var latest = await votes.SearchAsync(new VoteFilter(), 1, 50, ct);
+            return Results.Text(Feeds.Atom(latest.Items, BaseUrl(http)), "application/atom+xml", Encoding.UTF8);
+        });
+        app.MapGet("/sitemap.xml", async (ISiteQueries site, HttpContext http, CancellationToken ct) =>
+            Results.Text(Feeds.Sitemap(await site.GetSitemapAsync(ct), BaseUrl(http)), "application/xml", Encoding.UTF8));
+        app.MapGet("/robots.txt", (HttpContext http) => Results.Text($"User-agent: *\nAllow: /\nSitemap: {BaseUrl(http)}/sitemap.xml\n", "text/plain"));
 
         return app;
+    }
+
+    private static string BaseUrl(HttpContext http)
+    {
+        var proto = http.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? http.Request.Scheme;
+        var host = http.Request.Headers["X-Forwarded-Host"].FirstOrDefault() ?? http.Request.Host.Value ?? "localhost";
+        return $"{proto}://{host}";
     }
 
     private static int Clamp(int page) => page < 1 ? 1 : page;

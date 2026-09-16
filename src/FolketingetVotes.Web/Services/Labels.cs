@@ -1,4 +1,5 @@
 using System.Globalization;
+using FolketingetVotes.Core.Entities;
 using FolketingetVotes.Core.Enums;
 
 namespace FolketingetVotes.Web.Services;
@@ -58,6 +59,21 @@ public static class Labels
     };
 
     public static string Result(bool passed) => passed ? "Vedtaget" : "Forkastet";
+
+    public static string KeywordType(int typeId) => typeId switch
+    {
+        1 => "Sagsområde",
+        2 => "Frit emneord",
+        3 => "Kontrolleret emneord",
+        _ => "Emneord",
+    };
+
+    public static string RoleKind(RolePeriodKind kind) => kind switch
+    {
+        RolePeriodKind.Minister => "Minister",
+        RolePeriodKind.TemporaryMember => "Midlertidigt medlem (stedfortræder)",
+        _ => kind.ToString(),
+    };
 
     public static string Date(DateTime value) => value.ToString("d. MMMM yyyy", Da);
 

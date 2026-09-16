@@ -1,0 +1,57 @@
+@page "/emner/{Id:int}"
+@inject ITopicQueries Topics
+@inject NavigationManager Navigation
+
+@if (topic is null)
+{
+    <PageTitle>Emne</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    <PageTitle>@topic.Name – afstemninger</PageTitle>
+    <PageMeta Title="@($"Emne: {topic.Name}")" Description="@($"{topic.CaseCount} sager og {topic.Votes.TotalCount} afstemninger i Folketinget om {topic.Name}.")" />
+    <p class="muted small"><a href="/emner">Emner</a> › @Labels.KeywordType(topic.TypeId)</p>
+    <h1>@topic.Name</h1>
+    <p class="lead">@Labels.Number(topic.CaseCount) sager, @Labels.Number(topic.Votes.TotalCount) afstemninger i salen.</p>
+
+    @if (topic.Parties.Count > 0)
+    {
+        <h2>Partiernes flertal ved endelige vedtagelser</h2>
+        <p class="small muted">For hver endelig vedtagelse om emnet: stemte flertallet af partiets tilstedeværende medlemmer for, imod eller hverken/eller. Tæller afstemninger, ikke medlemmer.</p>
+        <BallotLegend IncludeAbsent="false" />
+        <div class="bar-rows">
+            @foreach (var p in topic.Parties)
+            {
+                <div class="label"><PartyChip ShortName="@p.PartyShortName" Name="@p.PartyName" /></div>
+                <BallotStack ForCount="p.VotesFor" AgainstCount="p.VotesAgainst" AbstainCount="p.VotesAbstain" IncludeAbsent="false" />
+                <div class="value">@p.VotesFor / @p.VotesAgainst / @p.VotesAbstain</div>
+            }
+        </div>
+        <p class="small muted">Tal pr. parti: for / imod / hverken.</p>
+    }
+
+    <h2>Afstemninger</h2>
+    <VoteList Votes="topic.Votes.Items" />
+    <Pager Page="topic.Votes.Page" TotalPages="topic.Votes.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 25;
+
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private TopicDetail? topic;
+
+    protected override async Task OnInitializedAsync()
+    {
+        topic = await Topics.GetAsync(Id, Math.Max(1, Page ?? 1), PageSize);
+        if (topic is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private string Href(int page) => QueryString.Build($"/emner/{Id}", ("page", page.ToString()));
+}

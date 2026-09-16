@@ -26,6 +26,10 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<IPartyQueries, PartyQueries>();
         services.AddScoped<ICaseQueries, CaseQueries>();
         services.AddScoped<ISiteQueries, SiteQueries>();
+        services.AddScoped<ITopicQueries, TopicQueries>();
+        services.AddScoped<ISessionQueries, SessionQueries>();
+        services.AddScoped<IDonorQueries, DonorQueries>();
+        services.AddScoped<IComparisonQueries, ComparisonQueries>();
 
         // v1 ships without generated summaries; replace this registration to enable them (docs/roadmap.md).
         services.AddSingleton<ISummaryProvider, NullSummaryProvider>();
@@ -60,6 +64,8 @@ public static class DataServiceCollectionExtensions
         services.AddSingleton<IEntitySync, MeetingSync>();
         services.AddSingleton<IEntitySync, CaseSync>();
         services.AddSingleton<IEntitySync, CaseStepSync>();
+        services.AddSingleton<IEntitySync, KeywordSync>();
+        services.AddSingleton<IEntitySync, CaseKeywordSync>();
         services.AddSingleton<IEntitySync, CaseActorSync>();
         services.AddSingleton<IEntitySync, VoteSync>();
         services.AddSingleton<IEntitySync, BallotSync>();

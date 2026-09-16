@@ -56,7 +56,11 @@ public sealed partial class ActorSync(OdaClient oda, IDbContextFactory<Folketing
         UpdatedAt = dto.UpdatedAt,
         PictureUrl = Extract(PictureRegex(), dto.Biography),
         BiographyPartyShortName = Extract(PartyShortRegex(), dto.Biography),
+        Born = ParseBorn(Extract(BornRegex(), dto.Biography)),
     };
+
+    private static DateOnly? ParseBorn(string? value)
+        => DateOnly.TryParseExact(value, "dd-MM-yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : null;
 
     /// <summary>Upserts the actors and replaces each person's biography-derived party terms.</summary>
     protected override async Task UpsertAsync(FolketingetDbContext db, IReadOnlyList<Actor> batch, CancellationToken cancellationToken)
@@ -92,6 +96,9 @@ public sealed partial class ActorSync(OdaClient oda, IDbContextFactory<Folketing
 
     [GeneratedRegex("<partyShortname>(.*?)</partyShortname>", RegexOptions.Singleline)]
     private static partial Regex PartyShortRegex();
+
+    [GeneratedRegex("<born>(.*?)</born>", RegexOptions.Singleline)]
+    private static partial Regex BornRegex();
 }
 
 public sealed class ActorRelationSync(OdaClient oda, IDbContextFactory<FolketingetDbContext> db, IOptions<OdaOptions> options, ILogger<ActorRelationSync> logger)
@@ -226,6 +233,48 @@ public sealed class CaseActorSync(OdaClient oda, IDbContextFactory<FolketingetDb
     };
 
     protected override Task UpsertAsync(FolketingetDbContext db, IReadOnlyList<CaseActor> batch, CancellationToken cancellationToken)
+        => EfUpsert.UpsertByIdAsync(db, batch, cancellationToken);
+}
+
+public sealed class KeywordSync(OdaClient oda, IDbContextFactory<FolketingetDbContext> db, IOptions<OdaOptions> options, ILogger<KeywordSync> logger)
+    : EntitySync<OdaEmneord, Keyword>(oda, db, options, logger)
+{
+    public override string Name => "Emneord";
+
+    public override int Order => 55;
+
+    protected override bool LoadInParallelRanges => true;
+
+    protected override Keyword Map(OdaEmneord dto) => new()
+    {
+        Id = dto.Id,
+        TypeId = dto.TypeId,
+        Name = (dto.Name ?? string.Empty).Trim(),
+        UpdatedAt = dto.UpdatedAt,
+    };
+
+    protected override Task UpsertAsync(FolketingetDbContext db, IReadOnlyList<Keyword> batch, CancellationToken cancellationToken)
+        => EfUpsert.UpsertByIdAsync(db, batch, cancellationToken);
+}
+
+public sealed class CaseKeywordSync(OdaClient oda, IDbContextFactory<FolketingetDbContext> db, IOptions<OdaOptions> options, ILogger<CaseKeywordSync> logger)
+    : EntitySync<OdaEmneordSag, CaseKeyword>(oda, db, options, logger)
+{
+    public override string Name => "EmneordSag";
+
+    public override int Order => 56;
+
+    protected override bool LoadInParallelRanges => true;
+
+    protected override CaseKeyword Map(OdaEmneordSag dto) => new()
+    {
+        Id = dto.Id,
+        CaseId = dto.CaseId,
+        KeywordId = dto.KeywordId,
+        UpdatedAt = dto.UpdatedAt,
+    };
+
+    protected override Task UpsertAsync(FolketingetDbContext db, IReadOnlyList<CaseKeyword> batch, CancellationToken cancellationToken)
         => EfUpsert.UpsertByIdAsync(db, batch, cancellationToken);
 }
 

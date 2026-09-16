@@ -53,11 +53,17 @@ public sealed record VoteDetail(
     string? Comment,
     int MeetingId,
     string MeetingTitle,
+    string? MeetingNumber,
     int PeriodId,
     string PeriodTitle,
+    string PeriodCode,
     CaseSummary? Case,
     IReadOnlyList<PartyVoteBreakdown> Parties,
-    IReadOnlyList<BallotRow> Ballots);
+    IReadOnlyList<BallotRow> Ballots)
+{
+    /// <summary>The verbatim transcript (referat) of the sitting on folketingstidende.dk.</summary>
+    public string? TranscriptUrl => ExternalLinks.TranscriptPdfUrl(PeriodCode, MeetingNumber);
+}
 
 public static class BallotMath
 {

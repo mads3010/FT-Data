@@ -1,0 +1,39 @@
+@page "/folketingsaar"
+@inject ISessionQueries SessionQueries
+
+<PageTitle>Folketingsår</PageTitle>
+<PageMeta Title="Folketingsår" Description="Afstemninger pr. folketingsår: antal, vedtagne, enstemmige og partiernes fremmøde og sammenhold." />
+
+<h1>Folketingsår</h1>
+<p class="lead">Et folketingsår løber fra første tirsdag i oktober. Efter et valg starter en ny samling midt i året.</p>
+
+@if (sessions is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Folketingsår</th><th class="num">Afstemninger</th><th class="num">Vedtaget</th><th class="num">Enstemmige</th></tr></thead>
+            <tbody>
+                @foreach (var s in sessions)
+                {
+                    <tr>
+                        <td><a href="/folketingsaar/@s.PeriodId">@s.Title</a> <span class="muted small">@Labels.DateShort(s.StartDate)@(s.EndDate is { } e ? " – " + Labels.DateShort(e) : "")</span></td>
+                        <td class="num">@Labels.Number(s.VoteCount)</td>
+                        <td class="num">@Labels.Percent(s.PassedRate)</td>
+                        <td class="num">@Labels.Percent(s.UnanimousRate)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted">Enstemmig: ingen stemte imod eller hverken/eller. Vedtaget: Folketingets egen registrering af udfaldet.</p>
+}
+
+@code {
+    private IReadOnlyList<SessionListItem>? sessions;
+
+    protected override async Task OnInitializedAsync() => sessions = await SessionQueries.ListAsync();
+}

@@ -36,6 +36,10 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("biography_xml");
 
+                    b.Property<DateOnly?>("Born")
+                        .HasColumnType("date")
+                        .HasColumnName("born");
+
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("end_date");
@@ -229,6 +233,10 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("end_date");
 
+                    b.Property<bool>("IsTemporary")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_temporary");
+
                     b.Property<string>("PartyName")
                         .IsRequired()
                         .HasColumnType("text")
@@ -289,6 +297,36 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                     b.ToTable("case_actors", (string)null);
                 });
 
+            modelBuilder.Entity("FolketingetVotes.Core.Entities.CaseKeyword", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<int>("CaseId")
+                        .HasColumnType("integer")
+                        .HasColumnName("case_id");
+
+                    b.Property<int>("KeywordId")
+                        .HasColumnType("integer")
+                        .HasColumnName("keyword_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_case_keywords");
+
+                    b.HasIndex("CaseId")
+                        .HasDatabaseName("ix_case_keywords_case_id");
+
+                    b.HasIndex("KeywordId")
+                        .HasDatabaseName("ix_case_keywords_keyword_id");
+
+                    b.ToTable("case_keywords", (string)null);
+                });
+
             modelBuilder.Entity("FolketingetVotes.Core.Entities.CaseStep", b =>
                 {
                     b.Property<int>("Id")
@@ -331,6 +369,34 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                         .HasDatabaseName("ix_case_steps_case_id");
 
                     b.ToTable("case_steps", (string)null);
+                });
+
+            modelBuilder.Entity("FolketingetVotes.Core.Entities.Keyword", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<int>("TypeId")
+                        .HasColumnType("integer")
+                        .HasColumnName("type_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_keywords");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("ix_keywords_name");
+
+                    b.ToTable("keywords", (string)null);
                 });
 
             modelBuilder.Entity("FolketingetVotes.Core.Entities.Lookup", b =>
@@ -725,6 +791,45 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                     b.ToTable("periods", (string)null);
                 });
 
+            modelBuilder.Entity("FolketingetVotes.Core.Entities.RolePeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("person_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_role_periods");
+
+                    b.HasIndex("PersonId", "Kind", "StartDate")
+                        .HasDatabaseName("ix_role_periods_person_id_kind_start_date");
+
+                    b.ToTable("role_periods", (string)null);
+                });
+
             modelBuilder.Entity("FolketingetVotes.Core.Entities.SyncState", b =>
                 {
                     b.Property<string>("EntityName")
@@ -842,11 +947,37 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("vote_id");
 
+                    b.Property<bool>("WhileMinister")
+                        .HasColumnType("boolean")
+                        .HasColumnName("while_minister");
+
                     b.HasKey("BallotId");
 
                     b.ToTable((string)null);
 
                     b.ToView("mv_ballots", (string)null);
+                });
+
+            modelBuilder.Entity("FolketingetVotes.Data.Persistence.Views.CurrentMemberView", b =>
+                {
+                    b.Property<int>("PersonId")
+                        .HasColumnType("integer")
+                        .HasColumnName("person_id");
+
+                    b.Property<string>("PartyShortName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("party_short_name");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.HasKey("PersonId");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("mv_current_members", (string)null);
                 });
 
             modelBuilder.Entity("FolketingetVotes.Data.Persistence.Views.PartyStatsView", b =>
@@ -915,6 +1046,14 @@ namespace FolketingetVotes.Data.Persistence.Migrations
                     b.Property<int>("ForCount")
                         .HasColumnType("integer")
                         .HasColumnName("for_count");
+
+                    b.Property<int>("MinisterAbsent")
+                        .HasColumnType("integer")
+                        .HasColumnName("minister_absent");
+
+                    b.Property<int>("MinisterTotal")
+                        .HasColumnType("integer")
+                        .HasColumnName("minister_total");
 
                     b.Property<int>("Total")
                         .HasColumnType("integer")

@@ -30,6 +30,8 @@ public class BiographyParserTests
         Assert.Equal("UFG", terms[3].PartyShortName);
         Assert.Equal("Uden for folketingsgrupperne", terms[3].PartyName);
         Assert.Equal(("S", new DateOnly(2019, 3, 3)), (terms[4].PartyShortName, terms[4].StartDate));
+        Assert.True(terms[4].IsTemporary);
+        Assert.False(terms[0].IsTemporary);
     }
 
     [Fact]

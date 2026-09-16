@@ -1,0 +1,16 @@
+@* Open Graph / Twitter card tags so shared links preview with the page's own facts. *@
+@inject NavigationManager Navigation
+<HeadContent>
+    <meta property="og:title" content="@Title" />
+    <meta property="og:description" content="@Description" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="@Navigation.Uri" />
+    <meta property="og:site_name" content="Folketingets afstemninger" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="description" content="@Description" />
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;
+}

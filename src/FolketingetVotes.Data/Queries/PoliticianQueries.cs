@@ -9,29 +9,12 @@ namespace FolketingetVotes.Data.Queries;
 
 internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQueries
 {
+    private static readonly int[] ProposerRoles = [(int)CaseActorRole.ProposerRegistered, (int)CaseActorRole.ProposerPrivate, (int)CaseActorRole.Minister];
+
     public async Task<PagedResult<PoliticianListItem>> SearchAsync(PoliticianFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(filter);
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
-        var stats = db.PoliticianStats
-            .GroupBy(s => s.ActorId)
-            .Select(g => new { ActorId = g.Key, Total = g.Sum(s => s.Total), Absent = g.Sum(s => s.AbsentCount) });
-
-        var query =
-            from a in db.Actors
-            join st in stats on a.Id equals st.ActorId
-            where a.TypeId == ActorType.Person
-            select new
-            {
-                a.Id,
-                a.Name,
-                a.PictureUrl,
-                st.Total,
-                st.Absent,
-                CurrentParty = db.PartyMemberships.Where(pm => pm.PersonId == a.Id).OrderBy(pm => pm.Source == PartyMembershipSource.BiographyParty).ThenByDescending(pm => pm.StartDate).Select(pm => pm.PartyShortName).FirstOrDefault(),
-                IsCurrent = db.PartyMemberships.Any(pm => pm.PersonId == a.Id && pm.Source != PartyMembershipSource.BiographyParty && (pm.EndDate == null || pm.EndDate >= today)),
-            };
+        var query = ListQuery();
 
         if (!string.IsNullOrWhiteSpace(filter.Query))
         {
@@ -43,7 +26,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
         {
             var party = filter.PartyShortName;
             query = filter.CurrentOnly
-                ? query.Where(x => x.CurrentParty == party && x.IsCurrent)
+                ? query.Where(x => x.CurrentParty == party)
                 : query.Where(x => db.PartyMemberships.Any(pm => pm.PersonId == x.Id && pm.PartyShortName == party && pm.Source != PartyMembershipSource.BiographyParty));
         }
         else if (filter.CurrentOnly)
@@ -53,9 +36,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
 
         var total = await query.CountAsync(cancellationToken);
         var rows = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
-        var items = rows.Select(x => new PoliticianListItem(
-            x.Id, x.Name, x.CurrentParty, x.PictureUrl, x.IsCurrent, x.Total, x.Total == 0 ? null : (x.Total - x.Absent) / (double)x.Total)).ToList();
-        return new PagedResult<PoliticianListItem>(items, page, pageSize, total);
+        return new PagedResult<PoliticianListItem>(rows.Select(ToListItem).ToList(), page, pageSize, total);
     }
 
     public async Task<PoliticianProfile?> GetProfileAsync(int actorId, CancellationToken cancellationToken = default)
@@ -66,7 +47,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             return null;
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var current = await db.CurrentMembers.AsNoTracking().FirstOrDefaultAsync(c => c.PersonId == actorId, cancellationToken);
         var memberships = await (
             from pm in db.PartyMemberships
             join p0 in db.Parties on pm.PartyShortName equals p0.ShortName into pp
@@ -74,9 +55,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             where pm.PersonId == actorId && pm.Source != PartyMembershipSource.BiographyParty
             orderby pm.StartDate
             select new PartyMembershipRow(pm.PartyShortName, p != null ? p.Name : pm.PartyShortName, pm.StartDate, pm.EndDate)).ToListAsync(cancellationToken);
-
         var merged = MergeConsecutive(memberships);
-        var current = merged.LastOrDefault(m => m.EndDate is null || m.EndDate >= today);
         var biographyParty = merged.Count == 0
             ? await db.PartyMemberships.Where(pm => pm.PersonId == actorId && pm.Source == PartyMembershipSource.BiographyParty).Select(pm => pm.PartyShortName).FirstOrDefaultAsync(cancellationToken)
             : null;
@@ -87,7 +66,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             where s.ActorId == actorId
             orderby p.StartDate descending
             select new PoliticianPeriodStatsRow(p.Id, p.Title, p.StartDate,
-                new PoliticianStats(s.Total, s.ForCount, s.AgainstCount, s.AbstainCount, s.AbsentCount, s.WithPartyCount, s.AgainstPartyCount))).ToListAsync(cancellationToken);
+                new PoliticianStats(s.Total, s.ForCount, s.AgainstCount, s.AbstainCount, s.AbsentCount, s.WithPartyCount, s.AgainstPartyCount, s.MinisterTotal, s.MinisterAbsent))).ToListAsync(cancellationToken);
 
         var overall = perPeriod.Aggregate(PoliticianStats.Empty, (acc, r) => new PoliticianStats(
             acc.Total + r.Stats.Total,
@@ -96,9 +75,46 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             acc.AbstainCount + r.Stats.AbstainCount,
             acc.AbsentCount + r.Stats.AbsentCount,
             acc.WithPartyCount + r.Stats.WithPartyCount,
-            acc.AgainstPartyCount + r.Stats.AgainstPartyCount));
+            acc.AgainstPartyCount + r.Stats.AgainstPartyCount,
+            acc.MinisterTotal + r.Stats.MinisterTotal,
+            acc.MinisterAbsent + r.Stats.MinisterAbsent));
 
-        return new PoliticianProfile(actor.Id, actor.Name, actor.PictureUrl, current?.PartyShortName ?? merged.LastOrDefault()?.PartyShortName ?? biographyParty, current is not null, merged, overall, perPeriod);
+        var roles = await db.RolePeriods.AsNoTracking()
+            .Where(r => r.PersonId == actorId)
+            .OrderByDescending(r => r.StartDate)
+            .Select(r => new RolePeriodRow(r.Kind, r.Title, r.StartDate, r.EndDate))
+            .ToListAsync(cancellationToken);
+
+        var today = DateTime.Today;
+        var committees = await (
+            from r in db.ActorRelations
+            join c in db.Actors on r.FromActorId equals c.Id
+            where r.ToActorId == actorId && r.RoleId == (int)ActorRelationRole.Member && c.TypeId == ActorType.Committee
+                  && (r.EndDate == null || r.EndDate >= today)
+            select c.Name).Distinct().OrderBy(n => n).ToListAsync(cancellationToken);
+
+        var proposals = await (
+            from ca in db.CaseActors
+            join c in db.Cases on ca.CaseId equals c.Id
+            join p in db.Periods on c.PeriodId equals p.Id
+            join st0 in db.Lookups.Where(l => l.Kind == LookupKind.CaseStatus) on c.StatusId equals st0.Id into sts
+            from st in sts.DefaultIfEmpty()
+            join r0 in db.Lookups.Where(l => l.Kind == LookupKind.CaseActorRole) on ca.RoleId equals r0.Id into rr
+            from r in rr.DefaultIfEmpty()
+            where ca.ActorId == actorId && ProposerRoles.Contains(ca.RoleId) && (c.TypeId == CaseType.Bill || c.TypeId == CaseType.Resolution)
+            orderby p.StartDate descending, c.NumberNumeric descending
+            select new CaseListItem(c.Id, c.TypeId, c.Number, c.ShortTitle ?? c.Title, st != null ? st.Name : null, p.Id, p.Title,
+                db.Votes.Count(v => db.CaseSteps.Any(s => s.Id == v.CaseStepId && s.CaseId == c.Id)), r != null ? r.Name : null))
+            .Take(150).ToListAsync(cancellationToken);
+
+        return new PoliticianProfile(
+            actor.Id, actor.Name, actor.PictureUrl,
+            current?.PartyShortName ?? merged.LastOrDefault()?.PartyShortName ?? biographyParty,
+            current is not null, merged, overall, perPeriod,
+            actor.Born?.Year,
+            roles.Where(r => r.Kind == RolePeriodKind.Minister).ToList(),
+            roles.Where(r => r.Kind == RolePeriodKind.TemporaryMember).ToList(),
+            committees, proposals);
     }
 
     public async Task<PagedResult<PoliticianBallotRow>> GetBallotsAsync(int actorId, BallotFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)
@@ -162,6 +178,56 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             .ToListAsync(cancellationToken);
 
         return new PagedResult<PoliticianBallotRow>(items, page, pageSize, total);
+    }
+
+    /// <summary>One politician as a list item (used by the comparison page).</summary>
+    internal async Task<PoliticianListItem?> GetListItemAsync(int actorId, CancellationToken cancellationToken)
+    {
+        var row = await ListQuery().FirstOrDefaultAsync(x => x.Id == actorId, cancellationToken);
+        return row is null ? null : ToListItem(row);
+    }
+
+    private IQueryable<ListRow> ListQuery()
+    {
+        var stats = db.PoliticianStats
+            .GroupBy(s => s.ActorId)
+            .Select(g => new { ActorId = g.Key, Total = g.Sum(s => s.Total), Absent = g.Sum(s => s.AbsentCount) });
+
+        return
+            from a in db.Actors
+            join st in stats on a.Id equals st.ActorId
+            join cm0 in db.CurrentMembers on a.Id equals cm0.PersonId into cms
+            from cm in cms.DefaultIfEmpty()
+            where a.TypeId == ActorType.Person
+            select new ListRow
+            {
+                Id = a.Id,
+                Name = a.Name,
+                PictureUrl = a.PictureUrl,
+                Born = a.Born,
+                Total = st.Total,
+                Absent = st.Absent,
+                CurrentParty = cm != null ? cm.PartyShortName : null,
+                LastParty = db.PartyMemberships.Where(pm => pm.PersonId == a.Id && pm.Source != PartyMembershipSource.BiographyParty).OrderByDescending(pm => pm.StartDate).Select(pm => pm.PartyShortName).FirstOrDefault(),
+                IsCurrent = cm != null,
+            };
+    }
+
+    private static PoliticianListItem ToListItem(ListRow x) => new(
+        x.Id, x.Name, x.CurrentParty ?? x.LastParty, x.PictureUrl, x.IsCurrent, x.Total,
+        x.Total == 0 ? null : (x.Total - x.Absent) / (double)x.Total, x.Born?.Year);
+
+    private sealed class ListRow
+    {
+        public int Id { get; init; }
+        public string Name { get; init; } = string.Empty;
+        public string? PictureUrl { get; init; }
+        public DateOnly? Born { get; init; }
+        public int Total { get; init; }
+        public int Absent { get; init; }
+        public string? CurrentParty { get; init; }
+        public string? LastParty { get; init; }
+        public bool IsCurrent { get; init; }
     }
 
     /// <summary>Collapses back-to-back memberships of the same party (one row per session in the source) into one span.</summary>

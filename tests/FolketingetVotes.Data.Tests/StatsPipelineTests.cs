@@ -52,6 +52,17 @@ public class StatsPipelineTests(PostgresFixture postgres)
         Assert.NotNull(blueProfile);
         Assert.Equal(0.0, blueProfile.Overall.AttendanceRate);
 
+        // Current members = everyone registered in the latest sitting day's votes, with their group that day.
+        var parties = new PartyQueries(query);
+        var redParty = await parties.GetAsync("RØD");
+        Assert.NotNull(redParty);
+        Assert.Equal(3, redParty.CurrentMembers.Count);
+        var sessions = new SessionQueries(query);
+        var session = await sessions.GetAsync(1);
+        Assert.NotNull(session);
+        Assert.Equal(1, session.Session.VoteCount);
+        Assert.Contains(session.Agreements, a => a.SharedVotes == 0 || a.AgreedVotes <= a.SharedVotes);
+
         var search = await votes.SearchAsync(new VoteFilter(Query: "Prøve"), 1, 10);
         Assert.Equal(1, search.TotalCount);
     }
@@ -59,7 +70,7 @@ public class StatsPipelineTests(PostgresFixture postgres)
     private static async Task Seed(FolketingetDbContext db)
     {
         await db.Database.ExecuteSqlRawAsync(
-            "TRUNCATE periods, actors, actor_relations, meetings, cases, case_steps, case_actors, votes, ballots, lookups, sync_states, parties, party_memberships");
+            "TRUNCATE periods, actors, actor_relations, meetings, cases, case_steps, case_actors, votes, ballots, lookups, sync_states, parties, party_memberships, biography_memberships, role_periods, keywords, case_keywords");
         var now = new DateTime(2024, 1, 1);
         db.Periods.Add(new Period { Id = 1, Code = "20231", Title = "2023-24", Type = "samling", StartDate = new DateTime(2023, 10, 3), EndDate = new DateTime(2024, 10, 1), UpdatedAt = now });
         db.Actors.AddRange(

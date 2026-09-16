@@ -75,7 +75,7 @@ internal sealed class VoteQueries(FolketingetDbContext db) : IVoteQueries
             join m in db.Meetings on v.MeetingId equals m.Id
             join p in db.Periods on m.PeriodId equals p.Id
             where v.Id == voteId
-            select new { v.Conclusion, v.Comment, MeetingId = m.Id, MeetingTitle = m.Title, PeriodId = p.Id, PeriodTitle = p.Title }).SingleAsync(cancellationToken);
+            select new { v.Conclusion, v.Comment, MeetingId = m.Id, MeetingTitle = m.Title, MeetingNumber = m.Number, PeriodId = p.Id, PeriodTitle = p.Title, PeriodCode = p.Code }).SingleAsync(cancellationToken);
 
         CaseSummary? caseSummary = null;
         if (item.CaseId is { } caseId)
@@ -108,6 +108,6 @@ internal sealed class VoteQueries(FolketingetDbContext db) : IVoteQueries
             return new BallotRow(b.ActorId, b.Name, b.PartyShortName, b.BallotType, dissents);
         }).ToList();
 
-        return new VoteDetail(item, header.Conclusion, header.Comment, header.MeetingId, header.MeetingTitle, header.PeriodId, header.PeriodTitle, caseSummary, parties, rows);
+        return new VoteDetail(item, header.Conclusion, header.Comment, header.MeetingId, header.MeetingTitle, header.MeetingNumber, header.PeriodId, header.PeriodTitle, header.PeriodCode, caseSummary, parties, rows);
     }
 }

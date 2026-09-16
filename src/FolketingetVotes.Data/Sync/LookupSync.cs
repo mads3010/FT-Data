@@ -25,6 +25,7 @@ public sealed class LookupSync(OdaClient oda, IDbContextFactory<FolketingetDbCon
         [LookupKind.BallotType] = "Stemmetype",
         [LookupKind.MeetingType] = "Mødetype",
         [LookupKind.MeetingStatus] = "Mødestatus",
+        [LookupKind.KeywordType] = "Emneordstype",
     };
 
     public string Name => "Lookups";

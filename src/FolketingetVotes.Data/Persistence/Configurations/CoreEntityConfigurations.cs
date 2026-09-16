@@ -154,6 +154,37 @@ internal sealed class BiographyMembershipConfiguration : IEntityTypeConfiguratio
     }
 }
 
+internal sealed class KeywordConfiguration : IEntityTypeConfiguration<Keyword>
+{
+    public void Configure(EntityTypeBuilder<Keyword> b)
+    {
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever();
+        b.HasIndex(x => x.Name);
+    }
+}
+
+internal sealed class CaseKeywordConfiguration : IEntityTypeConfiguration<CaseKeyword>
+{
+    public void Configure(EntityTypeBuilder<CaseKeyword> b)
+    {
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).ValueGeneratedNever();
+        b.HasIndex(x => x.CaseId);
+        b.HasIndex(x => x.KeywordId);
+    }
+}
+
+internal sealed class RolePeriodConfiguration : IEntityTypeConfiguration<RolePeriod>
+{
+    public void Configure(EntityTypeBuilder<RolePeriod> b)
+    {
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Kind).HasConversion<int>();
+        b.HasIndex(x => new { x.PersonId, x.Kind, x.StartDate });
+    }
+}
+
 internal sealed class BillSummaryConfiguration : IEntityTypeConfiguration<BillSummary>
 {
     public void Configure(EntityTypeBuilder<BillSummary> b)

@@ -19,6 +19,11 @@ else
         <p class="lead">@c.Title</p>
     }
     <p><span class="badge neutral">@(c.StatusName ?? "Status ukendt")</span></p>
+    @if (detail.Keywords.Count > 0)
+    {
+        <p class="small">Emner: @foreach (var k in detail.Keywords) { <a class="chip" href="/emner/@k.KeywordId">@k.Name</a> }</p>
+    }
+    <PageMeta Title="@($"{c.Number}: {c.ShortTitle ?? c.Title}")" Description="@(detail.Summary is { Length: > 0 } summaryText ? (summaryText.Length > 200 ? summaryText[..200] + "…" : summaryText) : c.Title)" />
 
     @if (detail.Summary is not null)
     {

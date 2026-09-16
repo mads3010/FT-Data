@@ -19,7 +19,12 @@
     <dt>Fremmøde</dt><dd>Andel af afstemninger, hvor medlemmet afgav en stemme (for, imod eller hverken). Beregnes kun for afstemninger, hvor medlemmet var registreret.</dd>
     <dt>Gruppe på afstemningsdagen</dt><dd>Folketingets data indeholder én folketingsgruppe pr. folketingsår med medlemskaber inkl. datoer. Hver stemme knyttes til den gruppe, medlemmet tilhørte den dag. For medlemmer, hvor Folketingets data mangler gruppetilknytningen (det gælder omkring hvert ottende medlem), bruges i stedet medlemmets egen biografi ("Folketingsmedlem for … i …, dato – dato"), og som sidste udvej det parti, biografien angiver. Løsgængere står som "UFG"; kan gruppen ikke afgøres, vises "Uden gruppe".</dd>
     <dt>Gruppens flertal</dt><dd>Den stemme, flest tilstedeværende gruppemedlemmer afgav i den enkelte afstemning. Ved stemmelighed eller hvis ingen var til stede, er der ikke noget flertal.</dd>
-    <dt>Stemte som gruppen / sammenhold</dt><dd>Andel af medlemmets (eller gruppens) afgivne stemmer, der var lig med gruppens flertal. Fravær tæller ikke med. Medlemmets egen stemme indgår i flertallet.</dd>
+    <dt>Stemte som gruppen / sammenhold</dt><dd>Andel af medlemmets (eller gruppens) afgivne stemmer, der var lig med gruppens flertal. Fravær tæller ikke med. Medlemmets egen stemme indgår i flertallet. Sammenhold på 99–100 % er det normale i Folketinget, hvor grupperne stemmer samlet; kun løsgængere (UFG) afviger.</dd>
+    <dt>Fremmøde uden for ministertid</dt><dd>Ministre deltager sjældent i afstemninger. For medlemmer, der har været ministre, vises fremmødet derfor også beregnet kun for afstemninger uden for deres ministerperioder (perioderne kommer fra Folketingets registrering af ministerposter).</dd>
+    <dt>Stedfortrædere</dt><dd>Midlertidige medlemmer (stedfortrædere) tæller med i den gruppe, de sad for, og optræder som medlemmer i de afstemninger, de var registreret i. På dage med udskiftning kan en afstemning have 176–181 registrerede stemmer i stedet for 179.</dd>
+    <dt>Nuværende medlem</dt><dd>Registreret (til stede eller fraværende) i afstemningerne på den seneste mødedag i salen. Alle 179 medlemmer registreres i hver afstemning, så det er den præcise sammensætning den dag, inkl. stedfortrædere.</dd>
+    <dt>Enighed mellem grupper</dt><dd>Andel af afstemninger, hvor to gruppers flertal faldt ens, blandt de afstemninger hvor begge grupper havde et flertal blandt de tilstedeværende.</dd>
+    <dt>Partiernes flertal pr. emne</dt><dd>For hvert emneord: antal endelige vedtagelser, hvor gruppens flertal stemte for, imod eller hverken/eller. Emneordene sættes af Folketingets administration.</dd>
     <dt>Vedtaget / forkastet</dt><dd>Folketingets egen registrering af udfaldet (feltet "vedtaget").</dd>
 </dl>
 
@@ -31,12 +36,17 @@
     <li>Partifarver bruges kun som kendetegn og følger den gængse mediefremstilling.</li>
 </ul>
 
+<h2>Sammenligning af politikere</h2>
+<p>Andel af afstemninger, hvor begge var til stede og afgav samme stemme (for, imod eller hverken/eller). Afstemninger, hvor mindst én var fraværende, indgår ikke.</p>
+
 <h2 id="bidrag">Private bidrag til partierne</h2>
 <p>
     Efter partiregnskabsloven skal partier oplyse navn, adresse og samlet beløb for bidragydere, der har givet mere end lovens grænse
     (20.000 kr. i 2017-niveau, indeksreguleret) i et regnskabsår. Regnskaberne indsendes til Folketinget og offentliggøres som samlede PDF-filer.
-    Siden viser præcis de oplysninger, partierne selv har opgivet, med henvisning til side i kildefilen. Automatisk parsing af PDF-filerne er
-    usikker; hver post kan derfor kontrolleres mod den rå tekst (hold musen over rækken).
+    Siden viser præcis de oplysninger, partierne selv har opgivet, med henvisning til side i kildefilen. Folketingets PDF'er er scannede
+    dokumenter uden tekst; teksten er derfor læst maskinelt (OCR), og enkelte navne kan være fejllæste. Hver post kan kontrolleres mod den
+    rå kildelinje (hold musen over rækken). På siden <a href="/bidrag">Bidragydere</a> er de samme oplysninger samlet pr. bidragyder på tværs af partier og år;
+    bidragydere, der er eller har været medlem af Folketinget, er markeret (deres bidrag er typisk partiskat).
 </p>
 
 <h2>Maskingenererede resuméer</h2>

@@ -15,4 +15,5 @@ public enum LookupKind
     BallotType,
     MeetingType,
     MeetingStatus,
+    KeywordType,
 }

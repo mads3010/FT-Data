@@ -24,6 +24,9 @@ public sealed class FolketingetDbContext(DbContextOptions<FolketingetDbContext> 
     public DbSet<Party> Parties => Set<Party>();
     public DbSet<PartyMembership> PartyMemberships => Set<PartyMembership>();
     public DbSet<BiographyMembership> BiographyMemberships => Set<BiographyMembership>();
+    public DbSet<Keyword> Keywords => Set<Keyword>();
+    public DbSet<CaseKeyword> CaseKeywords => Set<CaseKeyword>();
+    public DbSet<RolePeriod> RolePeriods => Set<RolePeriod>();
     public DbSet<BillSummary> BillSummaries => Set<BillSummary>();
     public DbSet<PartyAccount> PartyAccounts => Set<PartyAccount>();
     public DbSet<PartyDonation> PartyDonations => Set<PartyDonation>();
@@ -34,6 +37,8 @@ public sealed class FolketingetDbContext(DbContextOptions<FolketingetDbContext> 
     public DbSet<VotePartyBreakdownView> VotePartyBreakdowns => Set<VotePartyBreakdownView>();
     public DbSet<PoliticianStatsView> PoliticianStats => Set<PoliticianStatsView>();
     public DbSet<PartyStatsView> PartyStats => Set<PartyStatsView>();
+    public DbSet<CurrentMemberView> CurrentMembers => Set<CurrentMemberView>();
+    public DbSet<TopicStatsView> TopicStats => Set<TopicStatsView>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

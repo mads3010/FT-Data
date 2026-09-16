@@ -13,6 +13,25 @@ public sealed class BallotPartyView
     public DateTime VoteDate { get; init; }
     public int PeriodId { get; init; }
     public string? PartyShortName { get; init; }
+
+    /// <summary>The member held a ministerial post on the day of the vote.</summary>
+    public bool WhileMinister { get; init; }
+}
+
+/// <summary>Row of <c>mv_current_members</c>: who is a member today, and of which group.</summary>
+public sealed class CurrentMemberView
+{
+    public int PersonId { get; init; }
+    public string PartyShortName { get; init; } = string.Empty;
+    public DateOnly StartDate { get; init; }
+}
+
+/// <summary>Row of <c>mv_topic_stats</c>.</summary>
+public sealed class TopicStatsView
+{
+    public int KeywordId { get; init; }
+    public int CaseCount { get; init; }
+    public int VoteCount { get; init; }
 }
 
 /// <summary>Row of <c>mv_vote_totals</c>.</summary>
@@ -50,6 +69,8 @@ public sealed class PoliticianStatsView
     public int AbsentCount { get; init; }
     public int WithPartyCount { get; init; }
     public int AgainstPartyCount { get; init; }
+    public int MinisterTotal { get; init; }
+    public int MinisterAbsent { get; init; }
 }
 
 /// <summary>Row of <c>mv_party_stats</c>: one party's aggregate within one session.</summary>
@@ -66,6 +87,8 @@ public sealed class PartyStatsView
 
 internal sealed class MaterializedViewConfigurations :
     IEntityTypeConfiguration<BallotPartyView>,
+    IEntityTypeConfiguration<CurrentMemberView>,
+    IEntityTypeConfiguration<TopicStatsView>,
     IEntityTypeConfiguration<VoteTotalsView>,
     IEntityTypeConfiguration<VotePartyBreakdownView>,
     IEntityTypeConfiguration<PoliticianStatsView>,
@@ -76,6 +99,18 @@ internal sealed class MaterializedViewConfigurations :
         b.ToView("mv_ballots");
         b.HasKey(x => x.BallotId);
         b.Property(x => x.BallotType).HasConversion<int>();
+    }
+
+    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<CurrentMemberView> b)
+    {
+        b.ToView("mv_current_members");
+        b.HasKey(x => x.PersonId);
+    }
+
+    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TopicStatsView> b)
+    {
+        b.ToView("mv_topic_stats");
+        b.HasKey(x => x.KeywordId);
     }
 
     public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoteTotalsView> b)
