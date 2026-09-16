@@ -86,14 +86,21 @@ else
                     <table class="data">
                         <thead><tr><th>Bidragyder</th><th>Adresse</th><th class="num">Beløb</th><th class="num">Side</th></tr></thead>
                         <tbody>
-                            @foreach (var d in a.Donations)
+                            @foreach (var group in a.Donations.GroupBy(d => d.Note))
                             {
-                                <tr title="@d.RawText">
-                                    <td>@d.DonorName @if (d.Note is not null) { <div class="muted small">@d.Note</div> }</td>
-                                    <td class="small muted">@d.DonorAddress</td>
-                                    <td class="num">@Labels.Money(d.Amount)</td>
-                                    <td class="num">@d.SourcePage</td>
-                                </tr>
+                                @if (!string.IsNullOrWhiteSpace(group.Key))
+                                {
+                                    <tr><td colspan="4" class="muted small" style="background:var(--surface-2)">Regnskabet skriver: "@group.Key"</td></tr>
+                                }
+                                @foreach (var d in group.OrderByDescending(d => d.Amount ?? 0).ThenBy(d => d.DonorName))
+                                {
+                                    <tr title="@d.RawText">
+                                        <td>@d.DonorName</td>
+                                        <td class="small muted">@d.DonorAddress</td>
+                                        <td class="num">@Labels.Money(d.Amount)</td>
+                                        <td class="num">@d.SourcePage</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
