@@ -28,7 +28,7 @@ internal sealed class DonorQueries(FolketingetDbContext db) : IDonorQueries
                 g.Max(r => r.Year),
                 g.Count(),
                 g.Any(r => r.Amount is not null) ? g.Sum(r => r.Amount ?? 0) : null,
-                members.GetValueOrDefault(g.Key)));
+                members.TryGetValue(g.Key, out var actorId) ? actorId : null));
 
         if (!string.IsNullOrWhiteSpace(filter.Query))
         {
@@ -61,7 +61,7 @@ internal sealed class DonorQueries(FolketingetDbContext db) : IDonorQueries
 
         var members = await MemberNamesAsync(cancellationToken);
         var display = rows.GroupBy(r => r.DonorName).OrderByDescending(g => g.Count()).First().Key;
-        return new DonorDetail(key, display, members.GetValueOrDefault(key),
+        return new DonorDetail(key, display, members.TryGetValue(key, out var actorId) ? actorId : null,
             rows.OrderByDescending(r => r.Year).ThenBy(r => r.PartyName)
                 .Select(r => new DonorContributionRow(r.Year, r.PartyName, r.PartyShortName, r.DonorAddress, r.Amount, r.Note, r.SourcePage, r.SourceFile, r.RawText)).ToList());
     }

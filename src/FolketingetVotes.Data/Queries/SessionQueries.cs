@@ -9,7 +9,7 @@ internal sealed class SessionQueries(FolketingetDbContext db) : ISessionQueries
 {
     public async Task<IReadOnlyList<SessionListItem>> ListAsync(CancellationToken cancellationToken = default)
     {
-        return await SessionRows(null).OrderByDescending(s => s.StartDate).ToListAsync(cancellationToken);
+        return await SessionRows(null).ToListAsync(cancellationToken);
     }
 
     public async Task<SessionDetail?> GetAsync(int periodId, CancellationToken cancellationToken = default)
@@ -50,6 +50,7 @@ internal sealed class SessionQueries(FolketingetDbContext db) : ISessionQueries
     private IQueryable<SessionListItem> SessionRows(int? periodId) =>
         from p in db.Periods
         where (periodId == null || p.Id == periodId) && db.Meetings.Any(m => m.PeriodId == p.Id && db.Votes.Any(v => v.MeetingId == m.Id))
+        orderby p.StartDate descending
         select new SessionListItem(
             p.Id, p.Code, p.Title, p.StartDate, p.EndDate,
             db.Votes.Count(v => db.Meetings.Any(m => m.Id == v.MeetingId && m.PeriodId == p.Id)),
