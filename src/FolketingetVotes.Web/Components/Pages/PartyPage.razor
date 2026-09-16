@@ -68,7 +68,11 @@ else
     }
     else
     {
-        <p class="small muted">Bidragydere, som partiet selv har oplyst i sit regnskab, fordi bidraget oversteg lovens grænse (ca. 20.000 kr. pr. år). Beløb vises kun, når regnskabet angiver det.</p>
+        <p class="small muted">
+            Bidragydere, som partiet selv har oplyst i sit årsregnskab til Folketinget, fordi bidraget oversteg lovens grænse (20.000 kr. i 2017-niveau, indeksreguleret: 22.800 kr. i 2023).
+            De fleste partier oplyser kun navn og adresse; beløb vises, når regnskabet angiver det. Enkelte partier oplyser frivilligt bidrag under grænsen.
+            Teksten er læst maskinelt (OCR) fra Folketingets scannede PDF; hold musen over en række for at se den rå kildelinje, og kontrollér mod sidetallet.
+        </p>
         @foreach (var a in party.Accounts)
         {
             <h3>@a.Year <span class="muted small">(kilde: @a.SourceFile)</span></h3>
@@ -85,7 +89,7 @@ else
                             @foreach (var d in a.Donations)
                             {
                                 <tr title="@d.RawText">
-                                    <td>@d.DonorName</td>
+                                    <td>@d.DonorName @if (d.Note is not null) { <div class="muted small">@d.Note</div> }</td>
                                     <td class="small muted">@d.DonorAddress</td>
                                     <td class="num">@Labels.Money(d.Amount)</td>
                                     <td class="num">@d.SourcePage</td>

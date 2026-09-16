@@ -27,6 +27,7 @@ internal sealed class CommandRunner(
           refresh-stats                    Rebuild parties, party memberships and the mv_* materialized views.
           import-party-accounts <pdf...>   Parse party-account PDFs (partiregnskaber) into the database.
                [--year N]                  Accounting year when it cannot be read from the file name.
+          inspect-party-accounts <pdf>     Print what the parser finds in a file (sections, donors, pages) without importing.
           status                           Print sync bookkeeping and row counts.
         """;
 
@@ -66,6 +67,8 @@ internal sealed class CommandRunner(
                 return 0;
             case "import-party-accounts":
                 return await ImportPartyAccountsAsync(options, cancellationToken);
+            case "inspect-party-accounts":
+                return InspectPartyAccounts(options);
             case "status":
                 await StatusAsync(cancellationToken);
                 return 0;
@@ -132,6 +135,30 @@ internal sealed class CommandRunner(
         {
             var result = await partyAccounts.ImportAsync(path, year, cancellationToken);
             Console.WriteLine($"{result.File}: year {result.Year}, {result.Parties} parties, {result.Donations} disclosed contributions");
+        }
+
+        return 0;
+    }
+
+    private static int InspectPartyAccounts(List<string> options)
+    {
+        if (options.Count == 0)
+        {
+            Console.WriteLine("Give a PDF or .ocr.txt path.");
+            return 1;
+        }
+
+        var pages = FolketingetVotes.Data.PartyAccounts.PartyAccountPdfReader.Read(options[0]);
+        Console.WriteLine($"{pages.Count} pages");
+        foreach (var account in FolketingetVotes.Data.PartyAccounts.PartyAccountParser.Parse(pages))
+        {
+            Console.WriteLine();
+            Console.WriteLine($"## {account.PartyName} (short name {FolketingetVotes.Data.PartyAccounts.PartyAccountParser.ShortNameFor(account.PartyName) ?? "-"}, from page {account.FirstPage}): {account.Donations.Count} rows");
+            foreach (var d in account.Donations)
+            {
+                var amount = d.Amount is null ? string.Empty : $"  [{d.Amount:N0}]";
+                Console.WriteLine($"  p{d.PageNumber,-4} {d.DonorName} | {d.DonorAddress}{amount}");
+            }
         }
 
         return 0;

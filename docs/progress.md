@@ -2,6 +2,12 @@
 
 Newest first. Keep this short; details belong in features.md / roadmap.md.
 
+## 2026-09-16 (later) — party accounts, OCR, sharing
+
+- Found the published party-account PDFs are scans; built `tools/ocr-pdf` (Apple Vision, Danish) and OCR sidecars; fixed a memory leak that killed it after ~100 pages.
+- Rewrote the party-account parser against the real 2023 text and verified across 2020–2024 (see features.md); imported six years (2019–2024, 706 rows).
+- Pushed the repository to GitHub (mads3010/FT-Data); added Dockerfiles, a production compose file, `deploy/share.sh` and `docs/deployment.md`; shared a temporary Cloudflare quick-tunnel link.
+
 ## 2026-09-16 — v0.1 scaffold to working site
 
 - Researched oda.ft.dk: entity model, 100-row page cap, keyset paging, `opdateringsdato`, per-session group actors, ballot coverage since Oct 2004; documented in `docs/data-sources.md`.

@@ -487,3 +487,4 @@ data/partiregnskaber/*.pdf
 data/partiregnskaber/**/*.pdf
 tools/ocr-pdf/ocr-pdf
 data/partiregnskaber/*.ocr.txt
+data/partiregnskaber/*.partial
