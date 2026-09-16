@@ -1,0 +1,49 @@
+# Production-style stack on a single small VPS: PostgreSQL, the web app, and an hourly sync.
+#   docker compose -f deploy/docker-compose.prod.yml up -d --build
+# Put a reverse proxy with TLS (Caddy, Traefik, nginx) in front of port 8080.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: folketinget
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: folketinget
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U folketinget -d folketinget"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: src/FolketingetVotes.Web/Dockerfile
+    environment:
+      ConnectionStrings__Folketinget: Host=db;Database=folketinget;Username=folketinget;Password=${POSTGRES_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Production
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # One-shot: apply migrations and run the first full sync, then exits. Re-run `sync` from cron/host afterwards, e.g.
+  #   0 * * * * docker compose -f /srv/folketinget/deploy/docker-compose.prod.yml run --rm ingest sync
+  ingest:
+    build:
+      context: ..
+      dockerfile: src/FolketingetVotes.Ingest/Dockerfile
+    environment:
+      ConnectionStrings__Folketinget: Host=db;Database=folketinget;Username=folketinget;Password=${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
+    command: ["migrate"]
+
+volumes:
+  pgdata:

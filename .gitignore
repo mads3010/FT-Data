@@ -485,3 +485,5 @@ data/partiregnskaber/*.pdf
 # Party-account PDFs are downloaded manually and never committed
 data/partiregnskaber/*.pdf
 data/partiregnskaber/**/*.pdf
+tools/ocr-pdf/ocr-pdf
+data/partiregnskaber/*.ocr.txt
