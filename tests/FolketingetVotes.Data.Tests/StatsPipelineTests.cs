@@ -65,7 +65,7 @@ public class StatsPipelineTests(PostgresFixture postgres)
 
         var quality = await new DataQualityQueries(query).GetAsync();
         Assert.Equal(1, quality.VoteCount);
-        Assert.Equal(3, quality.MembersToday);
+        Assert.Equal(4, quality.MembersToday); // three red members plus the absent blue one, all registered in the latest vote
         Assert.Equal(0, quality.ConclusionsChecked);
 
         var search = await votes.SearchAsync(new VoteFilter(Query: "Prøve"), 1, 10);
