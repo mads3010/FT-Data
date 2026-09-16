@@ -25,8 +25,8 @@ internal sealed class DataQualityQueries(FolketingetDbContext db) : IDataQuality
             FROM parsed p JOIN mv_vote_totals t ON t.vote_id = p.id
             """).FirstAsync(cancellationToken);
 
-        var perVote = await db.Ballots.GroupBy(b => b.VoteId).Select(g => g.Count())
-            .GroupBy(c => c).Select(g => new BallotsPerVoteRow(g.Key, g.Count())).OrderByDescending(r => r.Votes).ToListAsync(cancellationToken);
+        var totals = await db.VoteTotals.Select(t => t.ForCount + t.AgainstCount + t.AbstainCount + t.AbsentCount).ToListAsync(cancellationToken);
+        var perVote = totals.GroupBy(c => c).Select(g => new BallotsPerVoteRow(g.Key, g.Count())).OrderByDescending(r => r.Votes).ToList();
 
         return new DataQualityReport(
             sync,
