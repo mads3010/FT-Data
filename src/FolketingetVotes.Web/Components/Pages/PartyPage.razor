@@ -14,6 +14,10 @@ else
     <h1><span class="chip" style="font-size:1rem"><span class="swatch" style="background:@PartyColors.For(party.ShortName)"></span>@party.ShortName</span> @party.Name</h1>
 
     <h2>Fremmøde og sammenhold pr. folketingsår</h2>
+    @if (party.IsIndependentGroup)
+    {
+        <div class="notice">Løsgængere har ingen fælles gruppelinje. Derfor beregnes hverken sammenhold, afvigelser eller enighed med andre grupper for denne gruppe; kun fremmøde vises.</div>
+    }
     <p class="small muted">Sammenhold: andel af gruppens afgivne stemmer (for/imod/hverken), der fulgte gruppens flertal i den enkelte afstemning.</p>
     @if (party.PerPeriod.Count == 0)
     {

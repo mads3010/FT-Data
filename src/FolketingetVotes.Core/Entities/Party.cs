@@ -11,4 +11,10 @@ public sealed class Party
     public int? LatestGroupActorId { get; set; }
     public DateOnly? FirstSeen { get; set; }
     public DateOnly? LastSeen { get; set; }
+
+    /// <summary>
+    /// "Uden for folketingsgrupperne" buckets (UFG, and the Faroese and Greenlandic variants) hold independents who
+    /// share no group line. No group majority is computed for them, so cohesion, dissent and agreement do not apply.
+    /// </summary>
+    public bool IsIndependentGroup { get; set; }
 }

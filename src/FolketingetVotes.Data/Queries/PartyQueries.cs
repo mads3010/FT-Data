@@ -17,7 +17,8 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
                 p.Name,
                 db.CurrentMembers.Count(cm => cm.PartyShortName == p.ShortName),
                 p.FirstSeen,
-                p.LastSeen)).ToListAsync(cancellationToken);
+                p.LastSeen,
+                p.IsIndependentGroup)).ToListAsync(cancellationToken);
         return items.OrderByDescending(i => i.CurrentMembers).ThenByDescending(i => i.LastSeen).ThenBy(i => i.Name).ToList();
     }
 
@@ -114,6 +115,6 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
             a.Donations.OrderByDescending(d => d.Amount ?? 0).ThenBy(d => d.DonorName)
                 .Select(d => new DonationRow(d.DonorName, d.DonorAddress, d.Amount, d.Note, d.SourcePage, d.RawText)).ToList())).ToList();
 
-        return new PartyDetail(party.ShortName, party.Name, members, perPeriod, accountRows);
+        return new PartyDetail(party.ShortName, party.Name, members, perPeriod, accountRows, party.IsIndependentGroup);
     }
 }

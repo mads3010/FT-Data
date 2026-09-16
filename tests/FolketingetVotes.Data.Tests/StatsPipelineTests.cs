@@ -31,9 +31,14 @@ public class StatsPipelineTests(PostgresFixture postgres)
         var detail = await votes.GetAsync(1000);
 
         Assert.NotNull(detail);
-        Assert.Equal(2, detail.Vote.ForCount);
-        Assert.Equal(1, detail.Vote.AgainstCount);
+        Assert.Equal(3, detail.Vote.ForCount);
+        Assert.Equal(2, detail.Vote.AgainstCount);
         Assert.Equal(1, detail.Vote.AbsentCount);
+
+        // Independents share no line: no majority, no dissent, no cohesion, and they stay out of the agreement matrix.
+        var ufg = detail.Parties.Single(p => p.PartyShortName == "UFG");
+        Assert.Equal((1, 1), (ufg.ForCount, ufg.AgainstCount));
+        Assert.All(detail.Ballots.Where(b => b.PartyShortName == "UFG"), b => Assert.False(b.DissentsFromParty));
 
         var red = detail.Parties.Single(p => p.PartyShortName == "RØD");
         Assert.Equal((2, 1, 0), (red.ForCount, red.AgainstCount, red.AbsentCount));
@@ -61,11 +66,15 @@ public class StatsPipelineTests(PostgresFixture postgres)
         var session = await sessions.GetAsync(1);
         Assert.NotNull(session);
         Assert.Equal(1, session.Session.VoteCount);
+        Assert.DoesNotContain("UFG", session.AgreementParties);
+        Assert.Equal(1, session.DissentCount);
+        var loose = await politicians.GetProfileAsync(5);
+        Assert.Null(loose!.Overall.PartyAgreementRate);
         Assert.Contains(session.Agreements, a => a.SharedVotes == 0 || a.AgreedVotes <= a.SharedVotes);
 
         var quality = await new DataQualityQueries(query).GetAsync();
         Assert.Equal(1, quality.VoteCount);
-        Assert.Equal(4, quality.MembersToday); // three red members plus the absent blue one, all registered in the latest vote
+        Assert.Equal(6, quality.MembersToday); // three red, one blue (absent) and two independents, all registered in the latest vote
         Assert.Equal(0, quality.ConclusionsChecked);
 
         var search = await votes.SearchAsync(new VoteFilter(Query: "Prøve"), 1, 10);
@@ -81,6 +90,9 @@ public class StatsPipelineTests(PostgresFixture postgres)
         db.Actors.AddRange(
             new Actor { Id = 10, TypeId = ActorType.ParliamentaryGroup, GroupShortName = "RØD", Name = "Røde Parti", PeriodId = 1, StartDate = new DateTime(2023, 10, 3), EndDate = new DateTime(2024, 10, 1), UpdatedAt = now },
             new Actor { Id = 11, TypeId = ActorType.ParliamentaryGroup, GroupShortName = "BLÅ", Name = "Blå Parti", PeriodId = 1, StartDate = new DateTime(2023, 10, 3), EndDate = new DateTime(2024, 10, 1), UpdatedAt = now },
+            new Actor { Id = 12, TypeId = ActorType.ParliamentaryGroup, GroupShortName = "UFG", Name = "Uden for folketingsgrupperne - Test", PeriodId = 1, StartDate = new DateTime(2023, 10, 3), EndDate = new DateTime(2024, 10, 1), UpdatedAt = now },
+            new Actor { Id = 5, TypeId = ActorType.Person, Name = "Løs Gænger", UpdatedAt = now },
+            new Actor { Id = 6, TypeId = ActorType.Person, Name = "Fri Fugl", UpdatedAt = now },
             new Actor { Id = 1, TypeId = ActorType.Person, Name = "Anna Rødsen", UpdatedAt = now },
             new Actor { Id = 2, TypeId = ActorType.Person, Name = "Bo Rødsen", UpdatedAt = now },
             new Actor { Id = 3, TypeId = ActorType.Person, Name = "Rebel Rødsen", UpdatedAt = now },
@@ -89,7 +101,9 @@ public class StatsPipelineTests(PostgresFixture postgres)
             new ActorRelation { Id = 1, FromActorId = 10, ToActorId = 1, RoleId = 15, UpdatedAt = now },
             new ActorRelation { Id = 2, FromActorId = 10, ToActorId = 2, RoleId = 15, UpdatedAt = now },
             new ActorRelation { Id = 3, FromActorId = 10, ToActorId = 3, RoleId = 15, StartDate = new DateTime(2023, 11, 1), UpdatedAt = now },
-            new ActorRelation { Id = 4, FromActorId = 11, ToActorId = 4, RoleId = 15, UpdatedAt = now });
+            new ActorRelation { Id = 4, FromActorId = 11, ToActorId = 4, RoleId = 15, UpdatedAt = now },
+            new ActorRelation { Id = 5, FromActorId = 12, ToActorId = 5, RoleId = 15, UpdatedAt = now },
+            new ActorRelation { Id = 6, FromActorId = 12, ToActorId = 6, RoleId = 15, UpdatedAt = now });
         db.Meetings.Add(new Meeting { Id = 100, Title = "Møde i Salen", Number = "1", Date = new DateTime(2024, 3, 5, 10, 0, 0), StatusId = 2, TypeId = 1, PeriodId = 1, UpdatedAt = now });
         db.Cases.Add(new ParliamentaryCase { Id = 500, TypeId = CaseType.Bill, StatusId = 10, Title = "Forslag til lov om prøvesager", ShortTitle = "Prøvesag", Number = "L 1", PeriodId = 1, UpdatedAt = now });
         db.CaseSteps.Add(new CaseStep { Id = 700, CaseId = 500, Title = "3. behandling", Date = new DateTime(2024, 3, 5), TypeId = 17, StatusId = 41, UpdatedAt = now });
@@ -98,7 +112,9 @@ public class StatsPipelineTests(PostgresFixture postgres)
             new Ballot { Id = 1, VoteId = 1000, ActorId = 1, TypeId = BallotType.For, UpdatedAt = now },
             new Ballot { Id = 2, VoteId = 1000, ActorId = 2, TypeId = BallotType.For, UpdatedAt = now },
             new Ballot { Id = 3, VoteId = 1000, ActorId = 3, TypeId = BallotType.Against, UpdatedAt = now },
-            new Ballot { Id = 4, VoteId = 1000, ActorId = 4, TypeId = BallotType.Absent, UpdatedAt = now });
+            new Ballot { Id = 4, VoteId = 1000, ActorId = 4, TypeId = BallotType.Absent, UpdatedAt = now },
+            new Ballot { Id = 5, VoteId = 1000, ActorId = 5, TypeId = BallotType.For, UpdatedAt = now },
+            new Ballot { Id = 6, VoteId = 1000, ActorId = 6, TypeId = BallotType.Against, UpdatedAt = now });
         await db.SaveChangesAsync();
     }
 

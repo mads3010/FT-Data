@@ -36,7 +36,7 @@ else
         {
             <StatTile Label="Fremmøde" Value="@Labels.Percent(profile.Overall.AttendanceRate)" Note="@($"{Labels.Number(profile.Overall.AbsentCount)} gange fraværende")" />
         }
-        <StatTile Label="Stemte som gruppen" Value="@Labels.Percent(profile.Overall.PartyAgreementRate)" Note="@($"{Labels.Number(profile.Overall.AgainstPartyCount)} afvigelser")" />
+        <StatTile Label="Stemte som gruppen" Value="@Labels.Percent(profile.Overall.PartyAgreementRate)" Note="@(profile.Overall.PartyAgreementRate is null ? "intet gruppeflertal at sammenligne med (løsgænger eller uden gruppe)" : $"{Labels.Number(profile.Overall.AgainstPartyCount)} afvigelser")" />
         <StatTile Label="For / imod / hverken" Value="@($"{Labels.Number(profile.Overall.ForCount)} / {Labels.Number(profile.Overall.AgainstCount)} / {Labels.Number(profile.Overall.AbstainCount)}")" />
     </div>
     <p class="small muted">

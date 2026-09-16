@@ -11,12 +11,12 @@
 <form class="filters" method="get" action="/partier/forskel">
     <label>Gruppe A
         <select name="a">
-            @foreach (var p in parties) { <option value="@p.ShortName" selected="@(p.ShortName == A)">@p.Name (@p.ShortName)</option> }
+            @foreach (var p in parties.Where(p => !p.IsIndependentGroup)) { <option value="@p.ShortName" selected="@(p.ShortName == A)">@p.Name (@p.ShortName)</option> }
         </select>
     </label>
     <label>Gruppe B
         <select name="b">
-            @foreach (var p in parties) { <option value="@p.ShortName" selected="@(p.ShortName == B)">@p.Name (@p.ShortName)</option> }
+            @foreach (var p in parties.Where(p => !p.IsIndependentGroup)) { <option value="@p.ShortName" selected="@(p.ShortName == B)">@p.Name (@p.ShortName)</option> }
         </select>
     </label>
     <label>Folketingsår

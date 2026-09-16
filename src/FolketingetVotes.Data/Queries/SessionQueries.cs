@@ -41,7 +41,8 @@ internal sealed class SessionQueries(FolketingetDbContext db) : ISessionQueries
             where m.PeriodId == periodId && b.PartyShortName != null && b.MajorityBallotType != null
             select new { b.VoteId, Party = b.PartyShortName!, Majority = (int)b.MajorityBallotType! }).ToListAsync(cancellationToken);
 
-        var agreementParties = parties.Where(p => p.ShortName != "UFG" && p.Members >= 1).Select(p => p.ShortName).ToList();
+        var independent = await db.Parties.Where(p => p.IsIndependentGroup).Select(p => p.ShortName).ToListAsync(cancellationToken);
+        var agreementParties = parties.Where(p => !independent.Contains(p.ShortName) && p.Members >= 1).Select(p => p.ShortName).ToList();
         var agreements = AgreementMath.Compute(majorityRows.Select(r => (r.VoteId, r.Party, r.Majority)), agreementParties);
 
         // Bills and resolutions that reached a final vote: outcome by category, and days from introduction to that vote.

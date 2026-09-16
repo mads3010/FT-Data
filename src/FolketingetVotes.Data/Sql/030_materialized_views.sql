@@ -56,7 +56,8 @@ FROM mv_ballots
 GROUP BY vote_id;
 CREATE UNIQUE INDEX ix_mv_vote_totals_vote ON mv_vote_totals (vote_id);
 
--- Per vote and party: counts plus the majority ballot among present members (NULL on a tie or when nobody was present).
+-- Per vote and party: counts plus the majority ballot among present members (NULL on a tie, when nobody was present,
+-- for unattributed ballots, and for independents: "uden for folketingsgrupperne" is not a group with a line).
 CREATE MATERIALIZED VIEW mv_vote_party_breakdown AS
 SELECT
     s.vote_id,
@@ -66,6 +67,8 @@ SELECT
     s.abstain_count,
     s.absent_count,
     CASE
+        WHEN s.party_short_name IS NULL THEN NULL
+        WHEN EXISTS (SELECT 1 FROM parties p WHERE p.short_name = s.party_short_name AND p.is_independent_group) THEN NULL
         WHEN GREATEST(s.for_count, s.against_count, s.abstain_count) = 0 THEN NULL
         WHEN (s.for_count = GREATEST(s.for_count, s.against_count, s.abstain_count))::int
            + (s.against_count = GREATEST(s.for_count, s.against_count, s.abstain_count))::int

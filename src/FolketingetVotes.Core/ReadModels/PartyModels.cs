@@ -1,6 +1,6 @@
 namespace FolketingetVotes.Core.ReadModels;
 
-public sealed record PartyListItem(string ShortName, string Name, int CurrentMembers, DateOnly? FirstSeen, DateOnly? LastSeen);
+public sealed record PartyListItem(string ShortName, string Name, int CurrentMembers, DateOnly? FirstSeen, DateOnly? LastSeen, bool IsIndependentGroup = false);
 
 public sealed record PartyMemberRow(int ActorId, string Name, string? PictureUrl, DateOnly Since);
 
@@ -43,4 +43,5 @@ public sealed record PartyDetail(
     string Name,
     IReadOnlyList<PartyMemberRow> CurrentMembers,
     IReadOnlyList<PartyPeriodStatsRow> PerPeriod,
-    IReadOnlyList<PartyAccountRow> Accounts);
+    IReadOnlyList<PartyAccountRow> Accounts,
+    bool IsIndependentGroup = false);
