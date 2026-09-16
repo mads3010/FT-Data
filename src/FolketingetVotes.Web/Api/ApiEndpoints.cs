@@ -84,8 +84,8 @@ public static class ApiEndpoints
             Results.Ok(await cases.SearchAsync(new CaseFilter(query, period, type, votes), Clamp(page), ClampSize(pageSize), ct)));
         api.MapGet("/topics", async (ITopicQueries topics, [FromQuery(Name = "q")] string? query, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
             Results.Ok(await topics.SearchAsync(query, Clamp(page), ClampSize(pageSize), ct)));
-        api.MapGet("/topics/{id:int}", async (int id, ITopicQueries topics, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
-            await topics.GetAsync(id, Clamp(page), ClampSize(pageSize), ct) is { } topic ? Results.Ok(topic) : Results.NotFound());
+        api.MapGet("/topics/{id:int}", async (int id, ITopicQueries topics, [FromQuery] int? period, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            await topics.GetAsync(id, period, Clamp(page), ClampSize(pageSize), ct) is { } topic ? Results.Ok(topic) : Results.NotFound());
         api.MapGet("/sessions", async (ISessionQueries sessions, CancellationToken ct) => Results.Ok(await sessions.ListAsync(ct)));
         api.MapGet("/sessions/{id:int}", async (int id, ISessionQueries sessions, CancellationToken ct) =>
             await sessions.GetAsync(id, ct) is { } session ? Results.Ok(session) : Results.NotFound());
@@ -94,10 +94,44 @@ public static class ApiEndpoints
         api.MapGet("/compare", async (IComparisonQueries comparisons, [FromQuery] int a, [FromQuery] int b, [FromQuery] int? period, CancellationToken ct) =>
             await comparisons.CompareAsync(a, b, period, ct) is { } result ? Results.Ok(result) : Results.NotFound());
 
-        app.MapGet("/feed.xml", async (IVoteQueries votes, HttpContext http, CancellationToken ct) =>
+        api.MapGet("/questions", async (IQuestionQueries questions, [FromQuery(Name = "q")] string? query, [FromQuery] int? period, [FromQuery] int? asker, [FromQuery(Name = "answeredby")] int? answeredBy, [FromQuery] string? minister, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            Results.Ok(await questions.SearchAsync(new QuestionFilter(query, period, asker, answeredBy, minister), Clamp(page), ClampSize(pageSize), ct)));
+        api.MapGet("/questions/stats", async (IQuestionQueries questions, [FromQuery] int? period, CancellationToken ct) =>
+            Results.Ok(new { Stats = await questions.GetStatsAsync(new QuestionFilter(PeriodId: period), ct), ByMinister = await questions.GetByMinisterAsync(period, ct) }));
+        api.MapGet("/parties/switches", async (IPartyQueries parties, CancellationToken ct) => Results.Ok(await parties.GetSwitchesAsync(ct)));
+        api.MapGet("/parties/compare", async (IPartyQueries parties, [FromQuery] string a, [FromQuery] string b, [FromQuery] int? period, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            await parties.CompareAsync(a, b, period, Clamp(page), ClampSize(pageSize), ct) is { } c ? Results.Ok(c) : Results.NotFound());
+        api.MapGet("/sessions/{id:int}/dissents", async (int id, ISessionQueries sessions, CancellationToken ct, [FromQuery] int page = 1, [FromQuery] int pageSize = 50) =>
+            Results.Ok(await sessions.GetDissentsAsync(id, Clamp(page), ClampSize(pageSize), ct)));
+        api.MapGet("/composition", async (ICompositionQueries composition, CancellationToken ct) => Results.Ok(await composition.GetCurrentAsync(ct)));
+        api.MapGet("/data-quality", async (IDataQualityQueries quality, CancellationToken ct) => Results.Ok(await quality.GetAsync(ct)));
+        api.MapGet("/search", async (ISearchQueries search, [FromQuery(Name = "q")] string query, CancellationToken ct) => Results.Ok(await search.SearchAsync(query, ct)));
+
+        app.MapGet("/feed.xml", async (IVoteQueries votes, IPoliticianQueries politicians, ITopicQueries topics, HttpContext http, [FromQuery(Name = "politiker")] int? politician, [FromQuery(Name = "emne")] int? topic, CancellationToken ct) =>
         {
+            var baseUrl = BaseUrl(http);
+            if (politician is { } pid)
+            {
+                var profile = await politicians.GetProfileAsync(pid, ct);
+                if (profile is null)
+                {
+                    return Results.NotFound();
+                }
+
+                var ballots = await politicians.GetBallotsAsync(pid, new BallotFilter(), 1, 50, ct);
+                return Results.Text(Feeds.AtomForBallots(profile, ballots.Items, baseUrl), "application/atom+xml", Encoding.UTF8);
+            }
+
+            if (topic is { } tid)
+            {
+                var detail = await topics.GetAsync(tid, null, 1, 50, ct);
+                return detail is null
+                    ? Results.NotFound()
+                    : Results.Text(Feeds.Atom(detail.Votes.Items, baseUrl, $"Afstemninger om {detail.Name}", $"/feed.xml?emne={tid}"), "application/atom+xml", Encoding.UTF8);
+            }
+
             var latest = await votes.SearchAsync(new VoteFilter(), 1, 50, ct);
-            return Results.Text(Feeds.Atom(latest.Items, BaseUrl(http)), "application/atom+xml", Encoding.UTF8);
+            return Results.Text(Feeds.Atom(latest.Items, baseUrl), "application/atom+xml", Encoding.UTF8);
         });
         app.MapGet("/sitemap.xml", async (ISiteQueries site, HttpContext http, CancellationToken ct) =>
             Results.Text(Feeds.Sitemap(await site.GetSitemapAsync(ct), BaseUrl(http)), "application/xml", Encoding.UTF8));

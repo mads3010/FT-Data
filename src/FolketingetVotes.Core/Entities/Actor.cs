@@ -29,4 +29,7 @@ public sealed class Actor : IHasId
 
     /// <summary>Date of birth parsed from the biography XML (born), if any; used to tell namesakes apart.</summary>
     public DateOnly? Born { get; set; }
+
+    /// <summary>"Mand" / "Kvinde" from the biography XML (sex), if any.</summary>
+    public string? Sex { get; set; }
 }

@@ -31,7 +31,7 @@ internal sealed class TopicQueries(FolketingetDbContext db) : ITopicQueries
         return new PagedResult<TopicListItem>(items, page, pageSize, total);
     }
 
-    public async Task<TopicDetail?> GetAsync(int keywordId, int page, int pageSize, CancellationToken cancellationToken = default)
+    public async Task<TopicDetail?> GetAsync(int keywordId, int? periodId, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var keyword = await db.Keywords.AsNoTracking().FirstOrDefaultAsync(k => k.Id == keywordId, cancellationToken);
         if (keyword is null)
@@ -42,7 +42,15 @@ internal sealed class TopicQueries(FolketingetDbContext db) : ITopicQueries
         var caseIds = db.CaseKeywords.Where(ck => ck.KeywordId == keywordId).Select(ck => ck.CaseId);
         var caseCount = await caseIds.CountAsync(cancellationToken);
 
-        var votesQuery = VoteProjections.Rows(db).Where(v => v.CaseId != null && caseIds.Contains(v.CaseId.Value));
+        var allVotes = VoteProjections.Rows(db).Where(v => v.CaseId != null && caseIds.Contains(v.CaseId.Value));
+        var perSession = await (
+            from v in allVotes
+            join p in db.Periods on v.PeriodId equals p.Id
+            group v by new { p.Id, p.Title, p.StartDate } into g
+            orderby g.Key.StartDate descending
+            select new TopicSessionRow(g.Key.Id, g.Key.Title, g.Count(), g.Count(v => v.Type == VoteType.FinalPassage), g.Count(v => v.Type == VoteType.FinalPassage && v.Passed))).ToListAsync(cancellationToken);
+
+        var votesQuery = periodId is { } pid ? allVotes.Where(v => v.PeriodId == pid) : allVotes;
         var voteTotal = await votesQuery.CountAsync(cancellationToken);
         var votes = (await votesQuery.OrderByDescending(v => v.Date).ThenByDescending(v => v.VoteId)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken)).Select(VoteProjections.ToItem).ToList();
@@ -51,7 +59,8 @@ internal sealed class TopicQueries(FolketingetDbContext db) : ITopicQueries
         var finalVoteIds =
             from v in db.Votes
             join s in db.CaseSteps on v.CaseStepId equals s.Id
-            where v.TypeId == VoteType.FinalPassage && caseIds.Contains(s.CaseId)
+            join m in db.Meetings on v.MeetingId equals m.Id
+            where v.TypeId == VoteType.FinalPassage && caseIds.Contains(s.CaseId) && (periodId == null || m.PeriodId == periodId)
             select v.Id;
         var positions = await (
             from b in db.VotePartyBreakdowns
@@ -67,6 +76,6 @@ internal sealed class TopicQueries(FolketingetDbContext db) : ITopicQueries
 
         return new TopicDetail(keyword.Id, keyword.Name, keyword.TypeId, caseCount,
             positions.OrderByDescending(p => p.Total).ThenBy(p => p.PartyShortName).ToList(),
-            new PagedResult<VoteListItem>(votes, page, pageSize, voteTotal));
+            new PagedResult<VoteListItem>(votes, page, pageSize, voteTotal), perSession, periodId);
     }
 }

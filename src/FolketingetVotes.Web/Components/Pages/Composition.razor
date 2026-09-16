@@ -1,0 +1,55 @@
+@page "/sammensaetning"
+@inject ICompositionQueries CompositionQueries
+
+<PageTitle>Folketingets sammensætning</PageTitle>
+<PageMeta Title="Folketingets sammensætning" Description="Køn, alder og anciennitet for de nuværende medlemmer, pr. folketingsgruppe." />
+
+<h1>Folketingets sammensætning</h1>
+<p class="lead">Nuværende medlemmer pr. gruppe: køn, medianalder og median-anciennitet (år siden første registrerede medlemskab). Køn og fødselsdato kommer fra medlemmernes biografier hos Folketinget.</p>
+
+@if (report is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">Pr. @Labels.Date(report.AsOf)</p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Gruppe</th><th class="num">Medlemmer</th><th class="num">Kvinder</th><th class="num">Mænd</th><th>Andel kvinder</th><th class="num">Medianalder</th><th class="num">Median-anciennitet</th></tr></thead>
+            <tbody>
+                @foreach (var r in report.Parties)
+                {
+                    <tr>
+                        <td><PartyChip ShortName="@r.PartyShortName" Name="@r.PartyName" /> <span class="small muted">@r.PartyName</span></td>
+                        <td class="num">@r.Members</td>
+                        <td class="num">@r.Women</td>
+                        <td class="num">@r.Men</td>
+                        <td style="min-width:150px"><ShareBar Label="@Labels.Percent(r.WomenShare)" Value="r.WomenShare" Css="abstain" /></td>
+                        <td class="num">@(r.MedianAge is { } a ? $"{a:0} år" : "–")</td>
+                        <td class="num">@(r.MedianSeniorityYears is { } s ? $"{s:0.0} år" : "–")</td>
+                    </tr>
+                }
+                <tr style="font-weight:600">
+                    <td>Folketinget</td>
+                    <td class="num">@report.Total.Members</td>
+                    <td class="num">@report.Total.Women</td>
+                    <td class="num">@report.Total.Men</td>
+                    <td style="min-width:150px"><ShareBar Label="@Labels.Percent(report.Total.WomenShare)" Value="report.Total.WomenShare" Css="abstain" /></td>
+                    <td class="num">@(report.Total.MedianAge is { } totalAge ? $"{totalAge:0} år" : "–")</td>
+                    <td class="num">@(report.Total.MedianSeniorityYears is { } totalSeniority ? $"{totalSeniority:0.0} år" : "–")</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    @if (report.Total.Unknown > 0)
+    {
+        <p class="small muted">@report.Total.Unknown medlem(mer) uden kønsangivelse i biografien.</p>
+    }
+}
+
+@code {
+    private CompositionReport? report;
+
+    protected override async Task OnInitializedAsync() => report = await CompositionQueries.GetCurrentAsync();
+}

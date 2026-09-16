@@ -1,0 +1,76 @@
+@page "/soeg"
+@inject ISearchQueries SearchQueries
+
+<PageTitle>Søg</PageTitle>
+
+<h1>Søg</h1>
+<form class="filters" method="get" action="/soeg">
+    <label>Politiker, sag, emne, bidragyder eller spørgsmål
+        <input type="search" name="q" value="@Query" placeholder="Søg…" autofocus />
+    </label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (results is null)
+{
+    <p class="muted">Skriv mindst to tegn.</p>
+}
+else if (results.Total == 0)
+{
+    <p class="muted">Intet fundet for "@results.Query".</p>
+}
+else
+{
+    @if (results.Politicians.Count > 0)
+    {
+        <h2>Politikere</h2>
+        <ul class="list">
+            @foreach (var p in results.Politicians)
+            {
+                <li><div class="person"><Avatar PictureUrl="@p.PictureUrl" Name="@p.Name" /><a href="/politikere/@p.ActorId">@p.Name</a> <PartyChip ShortName="@p.PartyShortName" Placeholder="" />@if (!p.IsCurrentMember) { <span class="muted small">(tidligere)</span> }</div></li>
+            }
+        </ul>
+        <p class="small"><a href="/politikere?q=@Uri.EscapeDataString(results.Query)&all=true">Alle politikere der matcher →</a></p>
+    }
+    @if (results.Cases.Count > 0)
+    {
+        <h2>Sager</h2>
+        <CaseList Cases="results.Cases" />
+        <p class="small"><a href="/sager?q=@Uri.EscapeDataString(results.Query)">Alle sager der matcher →</a></p>
+    }
+    @if (results.Topics.Count > 0)
+    {
+        <h2>Emner</h2>
+        <p>@foreach (var t in results.Topics) { <a class="chip" href="/emner/@t.KeywordId">@t.Name (@t.VoteCount)</a> }</p>
+    }
+    @if (results.Questions.Count > 0)
+    {
+        <h2>Spørgsmål til ministre</h2>
+        <QuestionTable Questions="results.Questions" />
+        <p class="small"><a href="/spoergsmaal?q=@Uri.EscapeDataString(results.Query)">Alle spørgsmål der matcher →</a></p>
+    }
+    @if (results.Donors.Count > 0)
+    {
+        <h2>Bidragydere</h2>
+        <ul class="list">
+            @foreach (var d in results.Donors)
+            {
+                <li><a href="/bidrag/@DonorNames.Slug(d.Key)">@d.DisplayName</a> <span class="muted small">@string.Join(", ", d.Parties) · @d.FirstYear–@d.LastYear</span></li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+
+    private SearchResults? results;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Query) && Query.Trim().Length >= 2)
+        {
+            results = await SearchQueries.SearchAsync(Query);
+        }
+    }
+}

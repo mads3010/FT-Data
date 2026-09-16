@@ -8,10 +8,14 @@ public sealed record PartyTopicPosition(string PartyShortName, string PartyName,
     public int Total => VotesFor + VotesAgainst + VotesAbstain;
 }
 
+public sealed record TopicSessionRow(int PeriodId, string PeriodTitle, int Votes, int FinalVotes, int Passed);
+
 public sealed record TopicDetail(
     int KeywordId,
     string Name,
     int TypeId,
     int CaseCount,
     IReadOnlyList<PartyTopicPosition> Parties,
-    PagedResult<VoteListItem> Votes);
+    PagedResult<VoteListItem> Votes,
+    IReadOnlyList<TopicSessionRow> PerSession,
+    int? PeriodId);

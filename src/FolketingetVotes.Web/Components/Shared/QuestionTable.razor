@@ -1,0 +1,25 @@
+<div class="table-wrap">
+    <table class="data">
+        <thead><tr><th>Stillet</th><th>Spørgsmål</th><th>Spørger</th><th>Til</th><th class="num">Svartid</th></tr></thead>
+        <tbody>
+            @foreach (var q in Questions)
+            {
+                <tr>
+                    <td class="nowrap">@(q.AskedDate is { } d ? Labels.DateShort(d) : "–")</td>
+                    <td>
+                        <a href="/sager/@q.CaseId">@q.Title</a>
+                        <span class="muted small">@q.Number@if (q.Oral) { <text> · mundtligt</text> }@if (q.Withdrawn) { <text> · tilbagetaget</text> }</span>
+                        @if (q.FolketingetUrl is not null) { <a class="small" href="@q.FolketingetUrl" rel="noopener">ft.dk ↗</a> }
+                    </td>
+                    <td>@if (q.AskerId is { } a) { <a href="/politikere/@a">@q.AskerName</a> } <PartyChip ShortName="@q.AskerParty" Placeholder="" /></td>
+                    <td class="small">@q.MinisterTitle @if (q.MinisterPersonId is { } m) { <text>(<a href="/politikere/@m">@q.MinisterPersonName</a>)</text> }</td>
+                    <td class="num">@(q.DaysToAnswer is { } days ? $"{days} d." : (q.Withdrawn ? "–" : "ubesvaret"))</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<QuestionListItem> Questions { get; set; } = [];
+}

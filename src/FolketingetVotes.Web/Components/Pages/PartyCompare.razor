@@ -1,0 +1,87 @@
+@page "/partier/forskel"
+@inject IPartyQueries PartyQueries
+@inject ISiteQueries Site
+
+<PageTitle>Hvor stemte to partier forskelligt?</PageTitle>
+<PageMeta Title="Forskelle mellem to partier" Description="Afstemninger hvor to folketingsgruppers flertal faldt forskelligt." />
+
+<h1>Hvor stemte to grupper forskelligt?</h1>
+<p class="lead">Vælg to grupper. Enighed måles på gruppernes flertal i de afstemninger, hvor begge havde et flertal blandt de tilstedeværende.</p>
+
+<form class="filters" method="get" action="/partier/forskel">
+    <label>Gruppe A
+        <select name="a">
+            @foreach (var p in parties) { <option value="@p.ShortName" selected="@(p.ShortName == A)">@p.Name (@p.ShortName)</option> }
+        </select>
+    </label>
+    <label>Gruppe B
+        <select name="b">
+            @foreach (var p in parties) { <option value="@p.ShortName" selected="@(p.ShortName == B)">@p.Name (@p.ShortName)</option> }
+        </select>
+    </label>
+    <label>Folketingsår
+        <select name="period">
+            <option value="">Alle</option>
+            @foreach (var p in periods) { <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option> }
+        </select>
+    </label>
+    <button type="submit">Vis</button>
+</form>
+
+@if (comparison is null)
+{
+    <p class="muted">Vælg to forskellige grupper.</p>
+}
+else
+{
+    <h2><PartyChip ShortName="@comparison.PartyA" /> @comparison.NameA og <PartyChip ShortName="@comparison.PartyB" /> @comparison.NameB</h2>
+    <div class="tiles">
+        <StatTile Label="Fælles afstemninger" Value="@Labels.Number(comparison.SharedVotes)" Note="begge havde et flertal" />
+        <StatTile Label="Stemte ens" Value="@Labels.Percent(comparison.AgreementRate)" Note="@($"{Labels.Number(comparison.AgreedVotes)} afstemninger")" />
+        <StatTile Label="Stemte forskelligt" Value="@Labels.Number(comparison.Differences.TotalCount)" />
+    </div>
+    <h2>Afstemninger med forskelligt flertal</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Dato</th><th>Afstemning</th><th>@comparison.PartyA</th><th>@comparison.PartyB</th><th>Resultat</th></tr></thead>
+            <tbody>
+                @foreach (var d in comparison.Differences.Items)
+                {
+                    <tr>
+                        <td class="nowrap">@Labels.DateShort(d.Vote.Date)</td>
+                        <td><a href="/afstemninger/@d.Vote.VoteId">@d.Vote.Title</a> <span class="muted small">@d.Vote.CaseNumber · @Labels.VoteType(d.Vote.Type)</span></td>
+                        <td><BallotBadge Type="d.MajorityA" Short="true" /></td>
+                        <td><BallotBadge Type="d.MajorityB" Short="true" /></td>
+                        <td><ResultBadge Passed="d.Vote.Passed" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="comparison.Differences.Page" TotalPages="comparison.Differences.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 40;
+
+    [SupplyParameterFromQuery(Name = "a")] public string? A { get; set; }
+    [SupplyParameterFromQuery(Name = "b")] public string? B { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private IReadOnlyList<PartyListItem> parties = [];
+    private IReadOnlyList<PeriodOption> periods = [];
+    private PartyComparison? comparison;
+
+    protected override async Task OnInitializedAsync()
+    {
+        parties = await PartyQueries.ListAsync();
+        periods = await Site.GetPeriodsWithVotesAsync();
+        if (!string.IsNullOrEmpty(A) && !string.IsNullOrEmpty(B) && A != B)
+        {
+            comparison = await PartyQueries.CompareAsync(A, B, Period, Math.Max(1, Page ?? 1), PageSize);
+        }
+    }
+
+    private string Href(int page) => QueryString.Build("/partier/forskel", ("a", A), ("b", B), ("period", Period?.ToString()), ("page", page.ToString()));
+}

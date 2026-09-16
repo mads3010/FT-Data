@@ -1,4 +1,5 @@
 -- Derived statistics. Rebuilt from scratch on every refresh so definition changes never need a migration.
+DROP MATERIALIZED VIEW IF EXISTS mv_questions;
 DROP MATERIALIZED VIEW IF EXISTS mv_topic_stats;
 DROP MATERIALIZED VIEW IF EXISTS mv_current_members;
 DROP MATERIALIZED VIEW IF EXISTS mv_party_stats;
@@ -21,7 +22,12 @@ SELECT
         SELECT 1 FROM role_periods rp
         WHERE rp.person_id = b.actor_id AND rp.kind = 1
           AND rp.start_date <= m.date::date AND (rp.end_date IS NULL OR rp.end_date >= m.date::date)
-    ) AS while_minister
+    ) AS while_minister,
+    EXISTS (
+        SELECT 1 FROM role_periods rp
+        WHERE rp.person_id = b.actor_id AND rp.kind = 3
+          AND rp.start_date <= m.date::date AND (rp.end_date IS NULL OR rp.end_date >= m.date::date)
+    ) AS while_on_leave
 FROM ballots b
 JOIN votes v    ON v.id = b.vote_id
 JOIN meetings m ON m.id = v.meeting_id
@@ -94,7 +100,9 @@ SELECT
     COUNT(*) FILTER (WHERE b.ballot_type <> 3 AND p.majority_ballot_type IS NOT NULL AND b.ballot_type = p.majority_ballot_type)::int AS with_party_count,
     COUNT(*) FILTER (WHERE b.ballot_type <> 3 AND p.majority_ballot_type IS NOT NULL AND b.ballot_type <> p.majority_ballot_type)::int AS against_party_count,
     COUNT(*) FILTER (WHERE b.while_minister)::int AS minister_total,
-    COUNT(*) FILTER (WHERE b.while_minister AND b.ballot_type = 3)::int AS minister_absent
+    COUNT(*) FILTER (WHERE b.while_minister AND b.ballot_type = 3)::int AS minister_absent,
+    COUNT(*) FILTER (WHERE b.while_minister OR b.while_on_leave)::int AS role_total,
+    COUNT(*) FILTER (WHERE (b.while_minister OR b.while_on_leave) AND b.ballot_type = 3)::int AS role_absent
 FROM mv_ballots b
 LEFT JOIN mv_vote_party_breakdown p
     ON p.vote_id = b.vote_id AND b.party_short_name IS NOT NULL AND p.party_short_name = b.party_short_name
@@ -141,3 +149,29 @@ LEFT JOIN case_steps s ON s.case_id = ck.case_id
 LEFT JOIN votes v ON v.case_step_id = s.id
 GROUP BY ck.keyword_id;
 CREATE UNIQUE INDEX ix_mv_topic_stats_keyword ON mv_topic_stats (keyword_id);
+
+-- § 20 questions: who asked whom, when it was submitted (step type 1) and answered (8 written, 19 oral).
+CREATE MATERIALIZED VIEW mv_questions AS
+SELECT
+    c.id AS case_id,
+    c.period_id,
+    c.number,
+    c.title,
+    (SELECT ca.actor_id FROM case_actors ca WHERE ca.case_id = c.id AND ca.role_id = 10 ORDER BY ca.id LIMIT 1) AS asker_id,
+    (SELECT ca.actor_id FROM case_actors ca JOIN actors a ON a.id = ca.actor_id AND a.type_id = 5 WHERE ca.case_id = c.id AND ca.role_id = 17 ORDER BY ca.id LIMIT 1) AS minister_person_id,
+    (SELECT a.name FROM case_actors ca JOIN actors a ON a.id = ca.actor_id WHERE ca.case_id = c.id AND ca.role_id = 14 ORDER BY ca.id LIMIT 1) AS minister_title,
+    (SELECT pm.party_short_name FROM party_memberships pm
+      WHERE pm.person_id = (SELECT ca.actor_id FROM case_actors ca WHERE ca.case_id = c.id AND ca.role_id = 10 ORDER BY ca.id LIMIT 1)
+        AND pm.start_date <= COALESCE((SELECT MIN(s.date) FROM case_steps s WHERE s.case_id = c.id AND s.type_id = 1), CURRENT_DATE)::date
+        AND (pm.end_date IS NULL OR pm.end_date >= COALESCE((SELECT MIN(s.date) FROM case_steps s WHERE s.case_id = c.id AND s.type_id = 1), CURRENT_DATE)::date)
+      ORDER BY pm.source, pm.start_date DESC LIMIT 1) AS asker_party,
+    (SELECT MIN(s.date) FROM case_steps s WHERE s.case_id = c.id AND s.type_id = 1) AS asked_date,
+    (SELECT MIN(s.date) FROM case_steps s WHERE s.case_id = c.id AND s.type_id IN (8, 19)) AS answered_date,
+    EXISTS (SELECT 1 FROM case_steps s WHERE s.case_id = c.id AND s.type_id = 19) AS oral,
+    EXISTS (SELECT 1 FROM case_steps s WHERE s.case_id = c.id AND s.type_id = 27) AS withdrawn
+FROM cases c
+WHERE c.type_id = 10;
+CREATE UNIQUE INDEX ix_mv_questions_case ON mv_questions (case_id);
+CREATE INDEX ix_mv_questions_asker ON mv_questions (asker_id);
+CREATE INDEX ix_mv_questions_minister ON mv_questions (minister_person_id);
+CREATE INDEX ix_mv_questions_period ON mv_questions (period_id);

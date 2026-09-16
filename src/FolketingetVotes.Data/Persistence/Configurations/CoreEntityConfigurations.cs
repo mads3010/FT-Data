@@ -24,6 +24,7 @@ internal sealed class ActorConfiguration : IEntityTypeConfiguration<Actor>
         b.HasIndex(x => x.TypeId);
         b.HasIndex(x => new { x.TypeId, x.GroupShortName });
         b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.Name).HasDatabaseName("ix_actors_name_trgm").HasMethod("gin").HasOperators("gin_trgm_ops");
     }
 }
 
@@ -59,6 +60,7 @@ internal sealed class ParliamentaryCaseConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.TypeId).HasConversion<int>();
         b.HasIndex(x => x.PeriodId);
         b.HasIndex(x => new { x.TypeId, x.PeriodId });
+        b.HasIndex(x => x.Title).HasDatabaseName("ix_cases_title_trgm").HasMethod("gin").HasOperators("gin_trgm_ops");
     }
 }
 
@@ -161,6 +163,7 @@ internal sealed class KeywordConfiguration : IEntityTypeConfiguration<Keyword>
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedNever();
         b.HasIndex(x => x.Name);
+        b.HasIndex(x => x.Name).HasDatabaseName("ix_keywords_name_trgm").HasMethod("gin").HasOperators("gin_trgm_ops");
     }
 }
 

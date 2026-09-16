@@ -7,4 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FolketingetVotes.Data\FolketingetVotes.Data.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
 </Project>

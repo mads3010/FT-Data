@@ -22,7 +22,28 @@ else
         <StatTile Label="Enstemmige" Value="@Labels.Percent(s.UnanimousRate)" Note="ingen imod eller hverken/eller" />
         <StatTile Label="Grupper" Value="@detail.Parties.Count.ToString()" />
     </div>
-    <p><a href="/afstemninger?period=@Id">Alle afstemninger i @s.Title →</a></p>
+    <p><a href="/afstemninger?period=@Id">Alle afstemninger i @s.Title →</a> · <a href="/folketingsaar/@Id/afvigelser">@Labels.Number(detail.DissentCount) afvigelser fra gruppen →</a> · <a href="/spoergsmaal?period=@Id">Spørgsmål til ministrene →</a></p>
+
+    @if (detail.Legislation.Count > 0)
+    {
+        <h2>Hvem får lovgivning igennem?</h2>
+        <p class="small muted">Lov- og beslutningsforslag, der nåede en endelig afstemning i året, fordelt på regeringsforslag og forslag fra medlemmer. Median: dage fra første registrerede sagstrin til den endelige afstemning.</p>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Type</th><th>Kategori</th><th class="num">Til afstemning</th><th class="num">Vedtaget</th><th class="num">Forkastet</th></tr></thead>
+                <tbody>
+                    @foreach (var l in detail.Legislation)
+                    {
+                        <tr><td>@Labels.CaseType(l.Type)</td><td>@l.Category</td><td class="num">@l.VotedOn</td><td class="num">@l.Passed</td><td class="num">@l.Rejected</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (detail.MedianDaysFromIntroductionToFinalVote is { } md)
+        {
+            <p class="small">Median @md.ToString("0") dage fra fremsættelse til endelig afstemning.</p>
+        }
+    }
 
     <h2>Partierne</h2>
     <div class="table-wrap">
@@ -47,7 +68,7 @@ else
     @if (detail.AgreementParties.Count > 1)
     {
         <h2>Hvor ofte stemte grupperne ens?</h2>
-        <p class="small muted">Andel af afstemninger, hvor de to gruppers flertal faldt ens, blandt de afstemninger hvor begge havde et flertal. Mørkere = oftere ens.</p>
+        <p class="small muted">Andel af afstemninger, hvor de to gruppers flertal faldt ens, blandt de afstemninger hvor begge havde et flertal. Mørkere = oftere ens. Klik på et tal for at se de afstemninger, hvor grupperne stemte forskelligt.</p>
         <div class="table-wrap">
             <table class="data matrix">
                 <thead><tr><th></th>@foreach (var p in detail.AgreementParties) { <th class="num">@p</th> }</tr></thead>
@@ -66,7 +87,7 @@ else
                                 {
                                     var ag = detail.Agreement(a, b);
                                     var rate = ag?.Rate;
-                                    <td class="num" style="background: color-mix(in srgb, var(--for) @(Math.Round((rate ?? 0) * 100))%, var(--surface)); color: @((rate ?? 0) > 0.6 ? "#fff" : "var(--text)")" title="@a og @b: enige i @ag?.AgreedVotes af @ag?.SharedVotes afstemninger">@Labels.Percent(rate)</td>
+                                    <td class="num" style="background: color-mix(in srgb, var(--for) @(Math.Round((rate ?? 0) * 100))%, var(--surface));" title="@a og @b: enige i @ag?.AgreedVotes af @ag?.SharedVotes afstemninger"><a style="color: @((rate ?? 0) > 0.6 ? "#fff" : "var(--text)")" href="/partier/forskel?a=@a&b=@b&period=@Id">@Labels.Percent(rate)</a></td>
                                 }
                             }
                         </tr>

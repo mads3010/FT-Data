@@ -65,6 +65,34 @@ Defined as everyone registered (present or absent) in the votes of the latest si
 
 `/feed.xml` (Atom, latest 50 votes), `/sitemap.xml` (every vote, politician, party, case with votes, topic and session), `/robots.txt`, and Open Graph tags on vote, politician, case, topic, session and donor pages so shared links preview with the actual counts. Vote pages link the sitting's verbatim transcript on folketingstidende.dk (`/samling/{code}/salen/M{n}/{code}_M{n}_referat.pdf`).
 
+## ✅ Questions to ministers (`/spoergsmaal`)
+
+All 58,376 § 20 questions (case type 10) in `mv_questions`: asker (role "Spørger"), the asker's group on the day, the minister title (role "Minister") and the minister *person* (role "Til"), submission date (step type 1) and answer date (first written or oral answer, step types 8/19), oral and withdrawn flags. The page filters by session, minister title, asker, answering minister and text; shows totals, answered, oral, withdrawn and the median days to answer; per session a table per minister title with the person who answered most. Profiles link to "questions asked" and "questions received as minister". Each question links to Folketinget's own page (ft.dk) for the text and the answer.
+
+## ✅ Leave periods
+
+453 dated leave periods (orlov med/uden vederlag) from the API's relations are `role_periods` kind 3. `mv_ballots.while_on_leave` marks ballots during leave (51,527); profiles list the periods and the attendance tile excludes ministerial and leave periods together ("Fremmøde uden for minister- og orlovstid"), with the all-votes figure in the note.
+
+## ✅ Legislation outcomes, dissent lists and party differences
+
+Session pages show bills and resolutions that reached a final vote by category (Regeringsforslag / Privat forslag) with passed and rejected counts and the median days from first registered step to the final vote; a link to `/folketingsaar/{id}/afvigelser`, the date-sorted list of every ballot cast against the member's group majority in that session; and every cell of the agreement matrix links to `/partier/forskel?a=&b=&period=`, which lists the votes where the two groups' majorities differed.
+
+## ✅ Party switchers (`/partiskift`)
+
+Every change of group derived from the merged membership spans (`PartySwitches.From`), including moves to and from UFG, newest first.
+
+## ✅ Composition (`/sammensaetning`)
+
+Current members per group: women, men, share of women, median age (from the biography's birth date) and median seniority (years since first registered membership). Sex and birth date are parsed from the biographies at sync time.
+
+## ✅ Topic trends
+
+Topic pages show votes per session (all, final passages, passed) with links; `?period=` filters the party positions and the vote list to one session.
+
+## ✅ Search, status, feeds, API description
+
+A header search box (`/soeg`) queries politicians, cases, topics, donors and questions together; trigram indexes (pg_trgm) on case titles, keyword names and actor names keep ILIKE fast. `/status` publishes sync freshness, the conclusion-text cross-check, unattributed ballots, ballots-per-vote distribution and OCR nameless rows. `/feed.xml?politiker=ID` and `/feed.xml?emne=ID` add per-member and per-topic Atom feeds; `/openapi/v1.json` describes the API and `/api-docs` lists the endpoints.
+
 ## ✅ Home and About
 
 - Home: headline counts, latest votes, last sync time.

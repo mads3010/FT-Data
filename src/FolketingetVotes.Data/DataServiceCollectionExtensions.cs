@@ -30,6 +30,10 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<ISessionQueries, SessionQueries>();
         services.AddScoped<IDonorQueries, DonorQueries>();
         services.AddScoped<IComparisonQueries, ComparisonQueries>();
+        services.AddScoped<IQuestionQueries, QuestionQueries>();
+        services.AddScoped<ICompositionQueries, CompositionQueries>();
+        services.AddScoped<IDataQualityQueries, DataQualityQueries>();
+        services.AddScoped<ISearchQueries, SearchQueries>();
 
         // v1 ships without generated summaries; replace this registration to enable them (docs/roadmap.md).
         services.AddSingleton<ISummaryProvider, NullSummaryProvider>();

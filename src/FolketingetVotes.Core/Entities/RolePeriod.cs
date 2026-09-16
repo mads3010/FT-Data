@@ -8,6 +8,9 @@ public enum RolePeriodKind
 
     /// <summary>Sat as a temporary member / substitute ("Midlertidigt folketingsmedlem" in the biography).</summary>
     TemporaryMember = 2,
+
+    /// <summary>On leave (orlov) from the Folketing, with or without pay.</summary>
+    Leave = 3,
 }
 
 /// <summary>

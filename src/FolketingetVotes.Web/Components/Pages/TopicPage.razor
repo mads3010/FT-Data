@@ -13,7 +13,25 @@ else
     <PageMeta Title="@($"Emne: {topic.Name}")" Description="@($"{topic.CaseCount} sager og {topic.Votes.TotalCount} afstemninger i Folketinget om {topic.Name}.")" />
     <p class="muted small"><a href="/emner">Emner</a> › @Labels.KeywordType(topic.TypeId)</p>
     <h1>@topic.Name</h1>
-    <p class="lead">@Labels.Number(topic.CaseCount) sager, @Labels.Number(topic.Votes.TotalCount) afstemninger i salen.</p>
+    <p class="lead">@Labels.Number(topic.CaseCount) sager, @Labels.Number(topic.Votes.TotalCount) afstemninger i salen@(topic.PeriodId is null ? "" : " i det valgte folketingsår").</p>
+
+    @if (topic.PerSession.Count > 1)
+    {
+        <h2>Over tid</h2>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Folketingsår</th><th class="num">Afstemninger</th><th class="num">Endelige vedtagelser</th><th class="num">Heraf vedtaget</th></tr></thead>
+                <tbody>
+                    <tr style="@(topic.PeriodId is null ? "font-weight:600" : "")"><td><a href="/emner/@Id">Alle år</a></td><td class="num">@Labels.Number(topic.PerSession.Sum(r => r.Votes))</td><td class="num">@Labels.Number(topic.PerSession.Sum(r => r.FinalVotes))</td><td class="num">@Labels.Number(topic.PerSession.Sum(r => r.Passed))</td></tr>
+                    @foreach (var r in topic.PerSession)
+                    {
+                        <tr style="@(topic.PeriodId == r.PeriodId ? "font-weight:600" : "")"><td><a href="/emner/@Id?period=@r.PeriodId">@r.PeriodTitle</a></td><td class="num">@r.Votes</td><td class="num">@r.FinalVotes</td><td class="num">@r.Passed</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="small muted">Vælg et år for at se partiernes flertal og afstemningerne i netop det år.</p>
+    }
 
     @if (topic.Parties.Count > 0)
     {
@@ -41,17 +59,18 @@ else
 
     [Parameter] public int Id { get; set; }
     [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
 
     private TopicDetail? topic;
 
     protected override async Task OnInitializedAsync()
     {
-        topic = await Topics.GetAsync(Id, Math.Max(1, Page ?? 1), PageSize);
+        topic = await Topics.GetAsync(Id, Period, Math.Max(1, Page ?? 1), PageSize);
         if (topic is null)
         {
             Navigation.NotFound();
         }
     }
 
-    private string Href(int page) => QueryString.Build($"/emner/{Id}", ("page", page.ToString()));
+    private string Href(int page) => QueryString.Build($"/emner/{Id}", ("period", Period?.ToString()), ("page", page.ToString()));
 }

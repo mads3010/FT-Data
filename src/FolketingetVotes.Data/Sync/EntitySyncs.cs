@@ -57,6 +57,7 @@ public sealed partial class ActorSync(OdaClient oda, IDbContextFactory<Folketing
         PictureUrl = Extract(PictureRegex(), dto.Biography),
         BiographyPartyShortName = Extract(PartyShortRegex(), dto.Biography),
         Born = ParseBorn(Extract(BornRegex(), dto.Biography)),
+        Sex = Extract(SexRegex(), dto.Biography),
     };
 
     private static DateOnly? ParseBorn(string? value)
@@ -99,6 +100,9 @@ public sealed partial class ActorSync(OdaClient oda, IDbContextFactory<Folketing
 
     [GeneratedRegex("<born>(.*?)</born>", RegexOptions.Singleline)]
     private static partial Regex BornRegex();
+
+    [GeneratedRegex("<sex>(.*?)</sex>", RegexOptions.Singleline)]
+    private static partial Regex SexRegex();
 }
 
 public sealed class ActorRelationSync(OdaClient oda, IDbContextFactory<FolketingetDbContext> db, IOptions<OdaOptions> options, ILogger<ActorRelationSync> logger)

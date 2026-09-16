@@ -1,0 +1,65 @@
+@page "/status"
+@inject IDataQualityQueries DataQuality
+
+<PageTitle>Datakvalitet</PageTitle>
+<PageMeta Title="Datakvalitet og opdatering" Description="Hvor friske er data, og hvor godt stemmer de med Folketingets egne tal?" />
+
+<h1>Datakvalitet</h1>
+<p class="lead">Så du selv kan vurdere tallene: hvornår data sidst blev hentet, og hvordan vores optællinger stemmer med Folketingets egne konklusionstekster.</p>
+
+@if (report is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="Afstemninger med kontroltal" Value="@Labels.Number(report.ConclusionsChecked)" Note="Folketingets konklusion nævner for/imod/hverken" />
+        <StatTile Label="Stemmer overens" Value="@($"{Labels.Number(report.ConclusionsMatching)} ({Labels.Percent(report.ConclusionsChecked == 0 ? null : report.ConclusionsMatching / (double)report.ConclusionsChecked)})")" Note="vores optælling = Folketingets tekst" />
+        <StatTile Label="Stemmer uden gruppe" Value="@Labels.Percent(report.BallotCount == 0 ? null : report.UnattributedBallots / (double)report.BallotCount)" Note="@($"{Labels.Number(report.UnattributedBallots)} af {Labels.Number(report.BallotCount)}")" />
+        <StatTile Label="Medlemmer i dag" Value="@report.MembersToday.ToString()" Note="@(report.LatestVote is { } l ? $"seneste afstemning {Labels.DateShort(l)}" : null)" />
+    </div>
+
+    <h2>Seneste hentning fra oda.ft.dk</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Datasæt</th><th>Fuld indlæsning</th><th>Sidst kørt</th><th>Checkpoint (opdateringsdato)</th><th class="num">Rækker i alt</th></tr></thead>
+            <tbody>
+                @foreach (var s in report.Sync)
+                {
+                    <tr>
+                        <td>@s.EntityName</td>
+                        <td>@(s.FullLoadCompleted ? "ja" : "nej")</td>
+                        <td class="nowrap">@(s.LastRunCompletedAt is { } r ? Labels.DateTime(r.ToLocalTime()) : "–")</td>
+                        <td class="nowrap small muted">@(s.Checkpoint is { } c ? Labels.DateTime(c) : "–")</td>
+                        <td class="num">@Labels.Number(s.RowsUpserted)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Stemmer pr. afstemning</h2>
+    <p class="small muted">Folketinget har 179 medlemmer; andre tal skyldes stedfortrædere, der overlapper på udskiftningsdage.</p>
+    <div class="table-wrap">
+        <table class="data" style="max-width:360px">
+            <thead><tr><th class="num">Stemmer</th><th class="num">Afstemninger</th></tr></thead>
+            <tbody>
+                @foreach (var r in report.BallotsPerVote)
+                {
+                    <tr><td class="num">@r.Ballots</td><td class="num">@Labels.Number(r.Votes)</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Partiregnskaber</h2>
+    <p>@Labels.Number(report.DonorRows) bidragsrækker læst fra de scannede regnskaber, heraf @report.DonorRowsUnreadable med ulæseligt navn (vises med adresse og kildelinje).</p>
+    <p class="small muted">Metoden bag hvert tal: <a href="/om">Om og metode</a>. Kildekode og problemer: <a href="https://github.com/mads3010/FT-Data" rel="noopener">GitHub</a>.</p>
+}
+
+@code {
+    private DataQualityReport? report;
+
+    protected override async Task OnInitializedAsync() => report = await DataQuality.GetAsync();
+}

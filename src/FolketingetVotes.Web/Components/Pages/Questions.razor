@@ -1,0 +1,106 @@
+@page "/spoergsmaal"
+@inject IQuestionQueries QuestionQueries
+@inject ISiteQueries Site
+
+<PageTitle>Spørgsmål til ministrene</PageTitle>
+<PageMeta Title="Spørgsmål til ministrene (§ 20)" Description="Alle § 20-spørgsmål fra folketingsmedlemmer til ministre: hvem spørger hvem, hvad de spørger om, og hvor hurtigt der svares." />
+
+<h1>Spørgsmål til ministrene</h1>
+<p class="lead">
+    Et § 20-spørgsmål er et spørgsmål, som et medlem stiller en minister til skriftlig eller mundtlig besvarelse. Her ses hvem der spørger
+    hvem om hvad, og hvor mange dage der går til svaret. Spørgsmålets og svarets tekst findes hos Folketinget (link ved hvert spørgsmål).
+</p>
+
+<form class="filters" method="get" action="/spoergsmaal">
+    <label>Søg i spørgsmål
+        <input type="search" name="q" value="@Query" placeholder="fx S 360, pension, Ukraine" />
+    </label>
+    <label>Folketingsår
+        <select name="period">
+            <option value="">Alle</option>
+            @foreach (var p in periods)
+            {
+                <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option>
+            }
+        </select>
+    </label>
+    <label>Minister
+        <select name="minister">
+            <option value="">Alle</option>
+            @foreach (var m in ministers)
+            {
+                <option value="@m.MinisterTitle" selected="@(m.MinisterTitle == MinisterTitle)">@m.MinisterTitle (@Labels.Number(m.Questions))</option>
+            }
+        </select>
+    </label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (stats is not null)
+{
+    <div class="tiles">
+        <StatTile Label="Spørgsmål" Value="@Labels.Number(stats.Total)" />
+        <StatTile Label="Besvaret" Value="@Labels.Number(stats.Answered)" Note="@($"{Labels.Number(stats.Oral)} mundtligt, {Labels.Number(stats.Withdrawn)} tilbagetaget")" />
+        <StatTile Label="Median svartid" Value="@(stats.MedianDaysToAnswer is { } d ? $"{d:0} dage" : "–")" Note="fra anmeldelse til svar" />
+    </div>
+}
+
+@if (Period is not null && ministers.Count > 0 && string.IsNullOrEmpty(MinisterTitle) && string.IsNullOrEmpty(Query) && Asker is null)
+{
+    <h2>Pr. minister</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Minister</th><th>Person (flest svar)</th><th class="num">Spørgsmål</th><th class="num">Median svartid</th></tr></thead>
+            <tbody>
+                @foreach (var m in ministers)
+                {
+                    <tr>
+                        <td><a href="@QueryString.Build("/spoergsmaal", ("period", Period?.ToString()), ("minister", m.MinisterTitle))">@m.MinisterTitle</a></td>
+                        <td>@if (m.MinisterPersonId is { } pid) { <a href="/politikere/@pid">@m.MinisterPersonName</a> }</td>
+                        <td class="num">@Labels.Number(m.Questions)</td>
+                        <td class="num">@(m.MedianDaysToAnswer is { } d ? $"{d:0} dage" : "–")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <h2>Spørgsmål</h2>
+    <p class="muted small">@Labels.Number(result.TotalCount) spørgsmål@if (Asker is not null) { <text> stillet af det valgte medlem</text> }</p>
+    <QuestionTable Questions="result.Items" />
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 40;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+    [SupplyParameterFromQuery(Name = "minister")] public string? MinisterTitle { get; set; }
+    [SupplyParameterFromQuery(Name = "asker")] public int? Asker { get; set; }
+    [SupplyParameterFromQuery(Name = "answeredby")] public int? AnsweredBy { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<QuestionListItem>? result;
+    private QuestionStats? stats;
+    private IReadOnlyList<PeriodOption> periods = [];
+    private IReadOnlyList<MinisterQuestionRow> ministers = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        periods = await Site.GetPeriodsWithVotesAsync();
+        ministers = await QuestionQueries.GetByMinisterAsync(Period);
+        var filter = new QuestionFilter(Query, Period, Asker, AnsweredBy, MinisterTitle);
+        stats = await QuestionQueries.GetStatsAsync(filter);
+        result = await QuestionQueries.SearchAsync(filter, Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build("/spoergsmaal", ("q", Query), ("period", Period?.ToString()), ("minister", MinisterTitle), ("asker", Asker?.ToString()), ("answeredby", AnsweredBy?.ToString()), ("page", page.ToString()));
+}

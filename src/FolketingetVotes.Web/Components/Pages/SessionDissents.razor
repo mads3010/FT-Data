@@ -1,0 +1,64 @@
+@page "/folketingsaar/{Id:int}/afvigelser"
+@inject ISessionQueries SessionQueries
+@inject NavigationManager Navigation
+
+@if (detail is null)
+{
+    <PageTitle>Afvigelser</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    <PageTitle>Afvigelser fra gruppen – @detail.Session.Title</PageTitle>
+    <PageMeta Title="@($"Afvigelser fra gruppen, {detail.Session.Title}")" Description="@($"{Labels.Number(detail.DissentCount)} stemmer afgivet imod egen gruppes flertal i folketingsåret {detail.Session.Title}.")" />
+    <p class="muted small"><a href="/folketingsaar">Folketingsår</a> › <a href="/folketingsaar/@Id">@detail.Session.Title</a></p>
+    <h1>Afvigelser fra gruppen, @detail.Session.Title</h1>
+    <p class="lead">Hver stemme, hvor et tilstedeværende medlem stemte anderledes end flertallet af de tilstedeværende i sin egen gruppe. Sorteret efter dato; ingen rangordning.</p>
+    @if (rows is not null)
+    {
+        <p class="muted small">@Labels.Number(rows.TotalCount) afvigelser</p>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Dato</th><th>Medlem</th><th>Gruppe</th><th>Afstemning</th><th>Stemte</th><th>Gruppens flertal</th></tr></thead>
+                <tbody>
+                    @foreach (var d in rows.Items)
+                    {
+                        <tr>
+                            <td class="nowrap">@Labels.DateShort(d.Vote.Date)</td>
+                            <td><a href="/politikere/@d.ActorId">@d.Name</a></td>
+                            <td><PartyChip ShortName="@d.PartyShortName" /></td>
+                            <td><a href="/afstemninger/@d.Vote.VoteId">@d.Vote.Title</a> <span class="muted small">@d.Vote.CaseNumber</span></td>
+                            <td><BallotBadge Type="d.Ballot" Short="true" /></td>
+                            <td><BallotBadge Type="d.Majority" Short="true" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <Pager Page="rows.Page" TotalPages="rows.TotalPages" Href="Href" />
+    }
+}
+
+@code {
+    private const int PageSize = 50;
+
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private SessionDetail? detail;
+    private PagedResult<DissentRow>? rows;
+
+    protected override async Task OnInitializedAsync()
+    {
+        detail = await SessionQueries.GetAsync(Id);
+        if (detail is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        rows = await SessionQueries.GetDissentsAsync(Id, Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build($"/folketingsaar/{Id}/afvigelser", ("page", page.ToString()));
+}

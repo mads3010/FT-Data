@@ -28,12 +28,23 @@ public sealed record PartyAgreement(string PartyA, string PartyB, int SharedVote
     public double? Rate => SharedVotes == 0 ? null : AgreedVotes / (double)SharedVotes;
 }
 
+/// <summary>Bills or resolutions of one category in a session and how they fared at the final vote.</summary>
+public sealed record LegislationRow(Enums.CaseType Type, string Category, int VotedOn, int Passed)
+{
+    public int Rejected => VotedOn - Passed;
+}
+
+public sealed record DissentRow(int ActorId, string Name, string? PartyShortName, VoteListItem Vote, Enums.BallotType Ballot, Enums.BallotType Majority);
+
 public sealed record SessionDetail(
     SessionListItem Session,
     IReadOnlyList<SessionPartyRow> Parties,
     IReadOnlyList<VoteListItem> ClosestVotes,
     IReadOnlyList<string> AgreementParties,
-    IReadOnlyList<PartyAgreement> Agreements)
+    IReadOnlyList<PartyAgreement> Agreements,
+    IReadOnlyList<LegislationRow> Legislation,
+    double? MedianDaysFromIntroductionToFinalVote,
+    int DissentCount)
 {
     public PartyAgreement? Agreement(string a, string b) =>
         Agreements.FirstOrDefault(x => (x.PartyA == a && x.PartyB == b) || (x.PartyA == b && x.PartyB == a));

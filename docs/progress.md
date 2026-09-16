@@ -2,6 +2,11 @@
 
 Newest first. Keep this short; details belong in features.md / roadmap.md.
 
+## 2026-09-16 (v0.3) — issues #1–#16 filed, ten implemented
+
+- Filed 16 feature issues on GitHub with priorities; implemented the P1 set: questions to ministers, leave periods, legislation outcomes, party switchers, party-difference page, topic trends, session dissent list, composition, global search with trigram indexes, per-member/topic feeds and OpenAPI, data-quality page.
+- Open (P2/P3): appropriations (#5), EU dimension (#10), public party support (#11), income statements from the accounts (#12), pre-2004 votes from transcripts (#15).
+
 ## 2026-09-16 (v0.2) — audit fixes and new views
 
 - Fixed "current members" (233 → 179) by defining it from the latest sitting day's roster; politician list defaults to current members; birth years shown for namesakes.

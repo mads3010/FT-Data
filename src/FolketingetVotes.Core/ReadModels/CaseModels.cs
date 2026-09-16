@@ -52,6 +52,17 @@ public static class ExternalLinks
         return segment is null ? null : $"{FolketingstidendeBase}/samling/{periodCode}/{segment}/{slug}/index.htm";
     }
 
+    /// <summary>A § 20 question on ft.dk: /samling/20231/spoergsmaal/S360/index.htm.</summary>
+    public static string? QuestionUrl(string periodCode, string? number)
+    {
+        if (string.IsNullOrWhiteSpace(periodCode) || string.IsNullOrWhiteSpace(number))
+        {
+            return null;
+        }
+
+        return $"https://www.ft.dk/samling/{periodCode}/spoergsmaal/{number.Replace(" ", string.Empty, StringComparison.Ordinal)}/index.htm";
+    }
+
     /// <summary>Transcript of a chamber sitting: /samling/20231/salen/M10/20231_M10_referat.pdf (verified to resolve).</summary>
     public static string? TranscriptPdfUrl(string periodCode, string? meetingNumber)
     {

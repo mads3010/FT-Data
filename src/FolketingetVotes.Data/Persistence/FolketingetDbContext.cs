@@ -39,6 +39,7 @@ public sealed class FolketingetDbContext(DbContextOptions<FolketingetDbContext> 
     public DbSet<PartyStatsView> PartyStats => Set<PartyStatsView>();
     public DbSet<CurrentMemberView> CurrentMembers => Set<CurrentMemberView>();
     public DbSet<TopicStatsView> TopicStats => Set<TopicStatsView>();
+    public DbSet<QuestionView> Questions => Set<QuestionView>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -48,6 +49,7 @@ public sealed class FolketingetDbContext(DbContextOptions<FolketingetDbContext> 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("pg_trgm"); // trigram indexes keep ILIKE searches fast
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FolketingetDbContext).Assembly);
     }
 }

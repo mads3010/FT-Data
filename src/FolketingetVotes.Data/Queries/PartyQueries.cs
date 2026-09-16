@@ -21,6 +21,53 @@ internal sealed class PartyQueries(FolketingetDbContext db) : IPartyQueries
         return items.OrderByDescending(i => i.CurrentMembers).ThenByDescending(i => i.LastSeen).ThenBy(i => i.Name).ToList();
     }
 
+    public async Task<IReadOnlyList<PartySwitchRow>> GetSwitchesAsync(CancellationToken cancellationToken = default)
+    {
+        var spans = await (
+            from pm in db.PartyMemberships
+            join a in db.Actors on pm.PersonId equals a.Id
+            where pm.Source != PartyMembershipSource.BiographyParty
+            orderby pm.PersonId, pm.StartDate
+            select new { pm.PersonId, a.Name, pm.PartyShortName, pm.StartDate, pm.EndDate }).ToListAsync(cancellationToken);
+
+        return spans.GroupBy(s => s.PersonId)
+            .SelectMany(g => PartySwitches.From(g.Key, g.First().Name,
+                PoliticianQueries.MergeConsecutive(g.Select(s => new PartyMembershipRow(s.PartyShortName, s.PartyShortName, s.StartDate, s.EndDate)).ToList())))
+            .OrderByDescending(s => s.Date).ThenBy(s => s.Name)
+            .ToList();
+    }
+
+    public async Task<PartyComparison?> CompareAsync(string partyA, string partyB, int? periodId, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var names = await db.Parties.Where(p => p.ShortName == partyA || p.ShortName == partyB).ToDictionaryAsync(p => p.ShortName, p => p.Name, cancellationToken);
+        if (names.Count != 2)
+        {
+            return null;
+        }
+
+        var rows = db.VotePartyBreakdowns.Where(b => (b.PartyShortName == partyA || b.PartyShortName == partyB) && b.MajorityBallotType != null);
+        if (periodId is { } pid)
+        {
+            rows = rows.Where(b => db.Votes.Any(v => v.Id == b.VoteId && db.Meetings.Any(m => m.Id == v.MeetingId && m.PeriodId == pid)));
+        }
+
+        var majorities = await rows.Select(b => new { b.VoteId, b.PartyShortName, b.MajorityBallotType }).ToListAsync(cancellationToken);
+        var byVote = majorities.GroupBy(m => m.VoteId)
+            .Select(g => new { VoteId = g.Key, A = g.FirstOrDefault(x => x.PartyShortName == partyA)?.MajorityBallotType, B = g.FirstOrDefault(x => x.PartyShortName == partyB)?.MajorityBallotType })
+            .Where(x => x.A is not null && x.B is not null)
+            .ToList();
+        var differing = byVote.Where(x => x.A != x.B).ToDictionary(x => x.VoteId, x => (x.A!.Value, x.B!.Value));
+
+        var ids = differing.Keys.ToArray();
+        var query = VoteProjections.Rows(db).Where(v => ids.Contains(v.VoteId));
+        var total = ids.Length;
+        var pageRows = await query.OrderByDescending(v => v.Date).ThenByDescending(v => v.VoteId).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
+        var differences = pageRows.Select(r => new PartyDifferenceRow(VoteProjections.ToItem(r), differing[r.VoteId].Item1, differing[r.VoteId].Item2)).ToList();
+
+        return new PartyComparison(partyA, partyB, names[partyA], names[partyB], byVote.Count, byVote.Count - differing.Count,
+            new PagedResult<PartyDifferenceRow>(differences, page, pageSize, total));
+    }
+
     public async Task<PartyDetail?> GetAsync(string shortName, CancellationToken cancellationToken = default)
     {
         var party = await db.Parties.AsNoTracking().FirstOrDefaultAsync(p => p.ShortName == shortName, cancellationToken);

@@ -66,7 +66,7 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             where s.ActorId == actorId
             orderby p.StartDate descending
             select new PoliticianPeriodStatsRow(p.Id, p.Title, p.StartDate,
-                new PoliticianStats(s.Total, s.ForCount, s.AgainstCount, s.AbstainCount, s.AbsentCount, s.WithPartyCount, s.AgainstPartyCount, s.MinisterTotal, s.MinisterAbsent))).ToListAsync(cancellationToken);
+                new PoliticianStats(s.Total, s.ForCount, s.AgainstCount, s.AbstainCount, s.AbsentCount, s.WithPartyCount, s.AgainstPartyCount, s.MinisterTotal, s.MinisterAbsent, s.RoleTotal, s.RoleAbsent))).ToListAsync(cancellationToken);
 
         var overall = perPeriod.Aggregate(PoliticianStats.Empty, (acc, r) => new PoliticianStats(
             acc.Total + r.Stats.Total,
@@ -77,7 +77,9 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             acc.WithPartyCount + r.Stats.WithPartyCount,
             acc.AgainstPartyCount + r.Stats.AgainstPartyCount,
             acc.MinisterTotal + r.Stats.MinisterTotal,
-            acc.MinisterAbsent + r.Stats.MinisterAbsent));
+            acc.MinisterAbsent + r.Stats.MinisterAbsent,
+            acc.RoleTotal + r.Stats.RoleTotal,
+            acc.RoleAbsent + r.Stats.RoleAbsent));
 
         var roles = await db.RolePeriods.AsNoTracking()
             .Where(r => r.PersonId == actorId)
@@ -114,7 +116,10 @@ internal sealed class PoliticianQueries(FolketingetDbContext db) : IPoliticianQu
             actor.Born?.Year,
             roles.Where(r => r.Kind == RolePeriodKind.Minister).ToList(),
             roles.Where(r => r.Kind == RolePeriodKind.TemporaryMember).ToList(),
-            committees, proposals);
+            committees, proposals,
+            roles.Where(r => r.Kind == RolePeriodKind.Leave).ToList(),
+            await db.Questions.CountAsync(q => q.AskerId == actorId, cancellationToken),
+            await db.Questions.CountAsync(q => q.MinisterPersonId == actorId, cancellationToken));
     }
 
     public async Task<PagedResult<PoliticianBallotRow>> GetBallotsAsync(int actorId, BallotFilter filter, int page, int pageSize, CancellationToken cancellationToken = default)

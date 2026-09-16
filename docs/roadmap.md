@@ -21,7 +21,7 @@ Implementation sketch (Claude via the Anthropic .NET/HTTP API):
 
 ## 3. More views on the same data
 
-Done in v0.2: topics, sessions with agreement matrix and closest votes, donor index, case search, member comparison, proposals and ministerial periods on profiles, feeds and sitemap.
+Done in v0.2–v0.3: topics (with trends), sessions with agreement matrix, closest votes, legislation outcomes and dissent lists, party differences, party switchers, composition, donor index, case search, member comparison, questions to ministers, proposals, ministerial and leave periods on profiles, global search, feeds, sitemap, OpenAPI, status page. Remaining ideas are tracked as GitHub issues (#5, #10, #11, #12, #15).
 
 Remaining ideas:
 - Party-vs-party comparison page (the matrix gives the number; a page could list the votes where two parties differed).

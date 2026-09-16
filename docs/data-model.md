@@ -7,7 +7,7 @@ All tables use snake_case (EFCore.NamingConventions). Ids are the oda.ft.dk ids;
 | Table | Source | Key columns |
 |---|---|---|
 | `periods` | Periode | `code`, `title`, `type`, `start_date`, `end_date` |
-| `actors` | Aktør | `type_id`, `group_short_name`, `name`, `biography_xml`, `period_id`, `start_date`, `end_date`, `picture_url`, `biography_party_short_name` |
+| `actors` | Aktør | `type_id`, `group_short_name`, `name`, `biography_xml`, `period_id`, `start_date`, `end_date`, `picture_url`, `biography_party_short_name`, `born`, `sex` |
 | `actor_relations` | AktørAktør | `from_actor_id`, `to_actor_id`, `role_id`, `start_date`, `end_date` |
 | `meetings` | Møde | `title`, `number`, `date`, `status_id`, `type_id`, `period_id` |
 | `cases` | Sag | `type_id`, `status_id`, `title`, `short_title`, `number`, `summary` (resume), `voting_conclusion`, `period_id`, `law_number`, `law_date`, `retsinformation_url` |
@@ -29,7 +29,7 @@ Every synced row keeps `updated_at` = the API's `opdateringsdato`.
 | `parties` | one row per `group_short_name`: display name, latest group actor, first/last seen |
 | `party_memberships` | person × party span: `party_short_name`, `period_id`, `start_date`, `end_date`, `source` (1 API relation, 2 biography term, 3 biography party, undated) |
 | `biography_memberships` | terms parsed from each person's biography: `party_name`, `party_short_name`, `constituency`, `start_date`, `end_date`, `is_temporary` (written by the actor sync) |
-| `role_periods` | dated roles that change how a record reads: kind 1 minister (from ministertitel relations), kind 2 temporary member (currently none in the data) |
+| `role_periods` | dated roles that change how a record reads: kind 1 minister (from ministertitel relations), kind 2 temporary member (none in the data), kind 3 leave (orlov relations) |
 
 ## Materialized views
 
@@ -42,6 +42,7 @@ Every synced row keeps `updated_at` = the API's `opdateringsdato`.
 | `mv_party_stats` | party × session | `members`, `ballots`, `present_ballots`, `with_majority`, `against_majority` |
 | `mv_current_members` | person | everyone registered in the latest sitting day's votes: `party_short_name`, `start_date` |
 | `mv_topic_stats` | keyword | `case_count`, `vote_count` |
+| `mv_questions` | § 20 question | `asker_id`, `asker_party`, `minister_person_id`, `minister_title`, `asked_date`, `answered_date`, `oral`, `withdrawn` |
 
 ## Application tables
 

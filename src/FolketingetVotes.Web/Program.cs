@@ -18,6 +18,7 @@ builder.Services.AddFolketingetData(connectionString);
 builder.Services.AddRazorComponents();
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHealthChecks();
+builder.Services.AddOpenApi();
 // Emit æ/ø/å as characters, not numeric entities (smaller pages, readable source). Blazor resolves HtmlEncoder from DI.
 builder.Services.AddSingleton(HtmlEncoder.Create(UnicodeRanges.All));
 
@@ -33,6 +34,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapHealthChecks("/health");
+app.MapOpenApi();
 app.MapFolketingetApi();
 app.MapRazorComponents<App>();
 

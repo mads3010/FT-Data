@@ -63,6 +63,11 @@ public class StatsPipelineTests(PostgresFixture postgres)
         Assert.Equal(1, session.Session.VoteCount);
         Assert.Contains(session.Agreements, a => a.SharedVotes == 0 || a.AgreedVotes <= a.SharedVotes);
 
+        var quality = await new DataQualityQueries(query).GetAsync();
+        Assert.Equal(1, quality.VoteCount);
+        Assert.Equal(3, quality.MembersToday);
+        Assert.Equal(0, quality.ConclusionsChecked);
+
         var search = await votes.SearchAsync(new VoteFilter(Query: "Prøve"), 1, 10);
         Assert.Equal(1, search.TotalCount);
     }

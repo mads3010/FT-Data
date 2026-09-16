@@ -28,9 +28,9 @@ else
 
     <div class="tiles">
         <StatTile Label="Afstemninger" Value="@Labels.Number(profile.Overall.Total)" Note="registreret siden 2004" />
-        @if (profile.Overall.HasMinisterPeriods)
+        @if (profile.Overall.HasRolePeriods)
         {
-            <StatTile Label="Fremmøde uden for ministertid" Value="@Labels.Percent(profile.Overall.AttendanceRateExcludingMinisterPeriods)" Note="@($"{Labels.Number(profile.Overall.MinisterTotal)} afstemninger faldt i ministerperioder")" />
+            <StatTile Label="@(profile.Overall.HasMinisterPeriods ? "Fremmøde uden for minister- og orlovstid" : "Fremmøde uden for orlov")" Value="@Labels.Percent(profile.Overall.AttendanceRateExcludingRolePeriods)" Note="@($"{Labels.Number(profile.Overall.RoleTotal)} afstemninger faldt i minister- eller orlovsperioder")" />
         }
         else
         {
@@ -41,11 +41,20 @@ else
     </div>
     <p class="small muted">
         Fravær har mange legitime årsager (ministerrejser, sygdom, orlov, og Folketingets "clearing"-aftaler, hvor par af medlemmer bliver væk samtidig).
-        @if (profile.Overall.HasMinisterPeriods) { <text>Ministre deltager sjældent i afstemninger; fremmøde i alle @Labels.Number(profile.Overall.Total) afstemninger inkl. ministertid: @Labels.Percent(profile.Overall.AttendanceRate). </text> }
+        @if (profile.Overall.HasRolePeriods) { <text>Ministre deltager sjældent i afstemninger, og medlemmer på orlov erstattes af en stedfortræder; fremmøde i alle @Labels.Number(profile.Overall.Total) afstemninger inkl. disse perioder: @Labels.Percent(profile.Overall.AttendanceRate). </text> }
         "Stemte som gruppen" sammenligner kun med gruppens flertal blandt de tilstedeværende. <a href="/om">Læs om metoden</a>.
     </p>
 
-    @if (profile.MinisterPeriods.Count > 0 || profile.TemporaryPeriods.Count > 0 || profile.CurrentCommittees.Count > 0)
+    @if (profile.QuestionsAsked > 0 || profile.QuestionsAnswered > 0)
+    {
+        <p>
+            @if (profile.QuestionsAsked > 0) { <a href="/spoergsmaal?asker=@Id">@Labels.Number(profile.QuestionsAsked) § 20-spørgsmål stillet til ministre →</a> }
+            @if (profile.QuestionsAsked > 0 && profile.QuestionsAnswered > 0) { <text> · </text> }
+            @if (profile.QuestionsAnswered > 0) { <a href="/spoergsmaal?answeredby=@Id">@Labels.Number(profile.QuestionsAnswered) spørgsmål modtaget som minister →</a> }
+        </p>
+    }
+
+    @if (profile.MinisterPeriods.Count > 0 || profile.TemporaryPeriods.Count > 0 || profile.CurrentCommittees.Count > 0 || profile.LeavePeriods.Count > 0)
     {
         <h2>Hverv</h2>
         <dl class="facts">
@@ -56,6 +65,10 @@ else
             @foreach (var r in profile.TemporaryPeriods)
             {
                 <dt>Stedfortræder</dt><dd>@r.Title, @Labels.Date(r.StartDate) – @(r.EndDate is null ? "nu" : Labels.Date(r.EndDate.Value))</dd>
+            }
+            @foreach (var r in profile.LeavePeriods)
+            {
+                <dt>Orlov</dt><dd>@r.Title, @Labels.Date(r.StartDate) – @(r.EndDate is null ? "nu" : Labels.Date(r.EndDate.Value))</dd>
             }
             @if (profile.CurrentCommittees.Count > 0)
             {

@@ -27,7 +27,9 @@ public sealed record PoliticianStats(
     int WithPartyCount,
     int AgainstPartyCount,
     int MinisterTotal = 0,
-    int MinisterAbsent = 0)
+    int MinisterAbsent = 0,
+    int RoleTotal = 0,
+    int RoleAbsent = 0)
 {
     public static PoliticianStats Empty { get; } = new(0, 0, 0, 0, 0, 0, 0);
 
@@ -47,6 +49,18 @@ public sealed record PoliticianStats(
     }
 
     public bool HasMinisterPeriods => MinisterTotal > 0;
+
+    /// <summary>Attendance counting only votes held outside ministerial posts and leave (orlov).</summary>
+    public double? AttendanceRateExcludingRolePeriods
+    {
+        get
+        {
+            var total = Total - RoleTotal;
+            return total <= 0 ? null : (total - (AbsentCount - RoleAbsent)) / (double)total;
+        }
+    }
+
+    public bool HasRolePeriods => RoleTotal > 0;
 
     /// <summary>Share of present votes with a party majority where the member voted like that majority.</summary>
     public double? PartyAgreementRate
@@ -88,7 +102,33 @@ public sealed record PoliticianProfile(
     IReadOnlyList<RolePeriodRow> MinisterPeriods,
     IReadOnlyList<RolePeriodRow> TemporaryPeriods,
     IReadOnlyList<string> CurrentCommittees,
-    IReadOnlyList<CaseListItem> Proposals);
+    IReadOnlyList<CaseListItem> Proposals,
+    IReadOnlyList<RolePeriodRow> LeavePeriods,
+    int QuestionsAsked,
+    int QuestionsAnswered);
+
+public sealed record PartySwitchRow(int ActorId, string Name, string FromParty, string ToParty, DateOnly Date);
+
+/// <summary>Derives group changes from a person's merged membership spans (oldest first).</summary>
+public static class PartySwitches
+{
+    public static IReadOnlyList<PartySwitchRow> From(int actorId, string name, IReadOnlyList<PartyMembershipRow> mergedSpans)
+    {
+        ArgumentNullException.ThrowIfNull(mergedSpans);
+        var result = new List<PartySwitchRow>();
+        for (var i = 1; i < mergedSpans.Count; i++)
+        {
+            var previous = mergedSpans[i - 1];
+            var next = mergedSpans[i];
+            if (previous.PartyShortName != next.PartyShortName)
+            {
+                result.Add(new PartySwitchRow(actorId, name, previous.PartyShortName, next.PartyShortName, next.StartDate));
+            }
+        }
+
+        return result;
+    }
+}
 
 public sealed record BallotFilter(
     int? PeriodId = null,

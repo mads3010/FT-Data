@@ -12,6 +12,7 @@ namespace FolketingetVotes.Data.Queries;
 internal sealed class VoteListRow
 {
     public int VoteId { get; init; }
+    public int PeriodId { get; init; }
     public DateTime Date { get; init; }
     public VoteType Type { get; init; }
     public bool Passed { get; init; }
@@ -39,6 +40,7 @@ internal static class VoteProjections
         select new VoteListRow
         {
             VoteId = v.Id,
+            PeriodId = m.PeriodId,
             Date = m.Date,
             Type = v.TypeId,
             Passed = v.Passed,

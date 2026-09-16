@@ -16,6 +16,26 @@ public sealed class BallotPartyView
 
     /// <summary>The member held a ministerial post on the day of the vote.</summary>
     public bool WhileMinister { get; init; }
+
+    /// <summary>The member was on leave (orlov) on the day of the vote.</summary>
+    public bool WhileOnLeave { get; init; }
+}
+
+/// <summary>Row of <c>mv_questions</c>: a § 20 question with its parties and dates.</summary>
+public sealed class QuestionView
+{
+    public int CaseId { get; init; }
+    public int PeriodId { get; init; }
+    public string? Number { get; init; }
+    public string Title { get; init; } = string.Empty;
+    public int? AskerId { get; init; }
+    public string? AskerParty { get; init; }
+    public int? MinisterPersonId { get; init; }
+    public string? MinisterTitle { get; init; }
+    public DateTime? AskedDate { get; init; }
+    public DateTime? AnsweredDate { get; init; }
+    public bool Oral { get; init; }
+    public bool Withdrawn { get; init; }
 }
 
 /// <summary>Row of <c>mv_current_members</c>: who is a member today, and of which group.</summary>
@@ -71,6 +91,8 @@ public sealed class PoliticianStatsView
     public int AgainstPartyCount { get; init; }
     public int MinisterTotal { get; init; }
     public int MinisterAbsent { get; init; }
+    public int RoleTotal { get; init; }
+    public int RoleAbsent { get; init; }
 }
 
 /// <summary>Row of <c>mv_party_stats</c>: one party's aggregate within one session.</summary>
@@ -89,6 +111,7 @@ internal sealed class MaterializedViewConfigurations :
     IEntityTypeConfiguration<BallotPartyView>,
     IEntityTypeConfiguration<CurrentMemberView>,
     IEntityTypeConfiguration<TopicStatsView>,
+    IEntityTypeConfiguration<QuestionView>,
     IEntityTypeConfiguration<VoteTotalsView>,
     IEntityTypeConfiguration<VotePartyBreakdownView>,
     IEntityTypeConfiguration<PoliticianStatsView>,
@@ -111,6 +134,12 @@ internal sealed class MaterializedViewConfigurations :
     {
         b.ToView("mv_topic_stats");
         b.HasKey(x => x.KeywordId);
+    }
+
+    public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<QuestionView> b)
+    {
+        b.ToView("mv_questions");
+        b.HasKey(x => x.CaseId);
     }
 
     public void Configure(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<VoteTotalsView> b)

@@ -31,6 +31,13 @@ public sealed record DonationRow(string DonorName, string? DonorAddress, decimal
 
 public sealed record PartyAccountRow(int Year, string SourceFile, IReadOnlyList<DonationRow> Donations);
 
+public sealed record PartyDifferenceRow(VoteListItem Vote, Enums.BallotType MajorityA, Enums.BallotType MajorityB);
+
+public sealed record PartyComparison(string PartyA, string PartyB, string NameA, string NameB, int SharedVotes, int AgreedVotes, PagedResult<PartyDifferenceRow> Differences)
+{
+    public double? AgreementRate => SharedVotes == 0 ? null : AgreedVotes / (double)SharedVotes;
+}
+
 public sealed record PartyDetail(
     string ShortName,
     string Name,

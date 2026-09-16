@@ -1,0 +1,40 @@
+@page "/partiskift"
+@inject IPartyQueries PartyQueries
+
+<PageTitle>Partiskift</PageTitle>
+<PageMeta Title="Partiskift i Folketinget" Description="Alle medlemmer, der har skiftet folketingsgruppe, med dato, fra og til, siden 2004." />
+
+<h1>Partiskift</h1>
+<p class="lead">Medlemmer, der har skiftet folketingsgruppe, herunder til og fra løsgænger (UFG). Datoen er starten på det nye medlemskab ifølge Folketingets registrering eller medlemmets biografi.</p>
+
+@if (switches is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(switches.Count) skift</p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Dato</th><th>Medlem</th><th>Fra</th><th></th><th>Til</th></tr></thead>
+            <tbody>
+                @foreach (var s in switches)
+                {
+                    <tr>
+                        <td class="nowrap">@Labels.Date(s.Date)</td>
+                        <td><a href="/politikere/@s.ActorId">@s.Name</a></td>
+                        <td><PartyChip ShortName="@s.FromParty" /></td>
+                        <td class="muted">→</td>
+                        <td><PartyChip ShortName="@s.ToParty" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PartySwitchRow>? switches;
+
+    protected override async Task OnInitializedAsync() => switches = await PartyQueries.GetSwitchesAsync();
+}
