@@ -1,0 +1,33 @@
+<ul class="list">
+    @foreach (var v in Votes)
+    {
+        <li>
+            <div>
+                <div class="title">
+                    <a href="/afstemninger/@v.VoteId">@v.Title</a>
+                </div>
+                <div class="meta">
+                    @Labels.Date(v.Date)
+                    @if (v.CaseNumber is not null)
+                    {
+                        <text> · @v.CaseNumber</text>
+                    }
+                    · @Labels.VoteType(v.Type)
+                    @if (v.StepTitle is not null && v.CaseId is not null)
+                    {
+                        <text> · @v.StepTitle</text>
+                    }
+                </div>
+            </div>
+            <div class="person" style="gap:0.75rem">
+                <div class="mini-stack"><BallotStack ForCount="v.ForCount" AgainstCount="v.AgainstCount" AbstainCount="v.AbstainCount" AbsentCount="v.AbsentCount" /></div>
+                <span class="small num nowrap">@v.ForCount–@v.AgainstCount</span>
+                <ResultBadge Passed="v.Passed" />
+            </div>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<VoteListItem> Votes { get; set; } = [];
+}

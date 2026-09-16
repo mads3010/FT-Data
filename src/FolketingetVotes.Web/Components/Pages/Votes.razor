@@ -1,0 +1,85 @@
+@page "/afstemninger"
+@inject IVoteQueries VoteQueries
+@inject ISiteQueries Site
+
+<PageTitle>Afstemninger</PageTitle>
+
+<h1>Afstemninger</h1>
+<p class="lead">Søg i alle afstemninger i Folketingssalen. Stregen viser fordelingen for / imod / hverken / fraværende.</p>
+
+<form class="filters" method="get" action="/afstemninger">
+    <label>Søg i titel eller sagsnummer
+        <input type="search" name="q" value="@Query" placeholder="fx L 41 eller klima" />
+    </label>
+    <label>Folketingsår
+        <select name="period">
+            <option value="">Alle</option>
+            @foreach (var p in periods)
+            {
+                <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option>
+            }
+        </select>
+    </label>
+    <label>Type
+        <select name="type">
+            <option value="">Alle</option>
+            @foreach (var t in Enum.GetValues<VoteType>())
+            {
+                <option value="@t" selected="@(t == Type)">@Labels.VoteType(t)</option>
+            }
+        </select>
+    </label>
+    <label>Sagstype
+        <select name="caseType">
+            <option value="">Alle</option>
+            <option value="@CaseType.Bill" selected="@(CaseTypeFilter == CaseType.Bill)">Lovforslag</option>
+            <option value="@CaseType.Resolution" selected="@(CaseTypeFilter == CaseType.Resolution)">Beslutningsforslag</option>
+        </select>
+    </label>
+    <label>Resultat
+        <select name="passed">
+            <option value="">Alle</option>
+            <option value="true" selected="@(Passed == true)">Vedtaget</option>
+            <option value="false" selected="@(Passed == false)">Forkastet</option>
+        </select>
+    </label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(result.TotalCount) afstemninger</p>
+    <VoteList Votes="result.Items" />
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 25;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+    [SupplyParameterFromQuery(Name = "type")] public string? TypeText { get; set; }
+    [SupplyParameterFromQuery(Name = "caseType")] public string? CaseTypeText { get; set; }
+    [SupplyParameterFromQuery(Name = "passed")] public bool? Passed { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<VoteListItem>? result;
+
+    private VoteType? Type => Enum.TryParse<VoteType>(TypeText, true, out var t) ? t : null;
+    private CaseType? CaseTypeFilter => Enum.TryParse<CaseType>(CaseTypeText, true, out var c) ? c : null;
+    private IReadOnlyList<PeriodOption> periods = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        periods = await Site.GetPeriodsWithVotesAsync();
+        result = await VoteQueries.SearchAsync(new VoteFilter(Query, Period, Type, Passed, CaseTypeFilter), Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build("/afstemninger",
+        ("q", Query), ("period", Period?.ToString()), ("type", Type?.ToString()), ("caseType", CaseTypeFilter?.ToString()),
+        ("passed", Passed?.ToString().ToLowerInvariant()), ("page", page.ToString()));
+}

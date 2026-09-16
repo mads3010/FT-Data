@@ -1,0 +1,115 @@
+using System.Globalization;
+using System.Text;
+using FolketingetVotes.Core.Enums;
+using FolketingetVotes.Core.Queries;
+using FolketingetVotes.Core.ReadModels;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FolketingetVotes.Web.Api;
+
+/// <summary>
+/// A small read-only JSON API over the same query services the pages use, so the data stays open
+/// for other tools. Politician ballots can also be exported as CSV.
+/// </summary>
+public static class ApiEndpoints
+{
+    public static IEndpointRouteBuilder MapFolketingetApi(this IEndpointRouteBuilder app)
+    {
+        var api = app.MapGroup("/api/v1");
+
+        api.MapGet("/status", async (ISiteQueries site, CancellationToken ct) => Results.Ok(await site.GetOverviewAsync(ct)));
+        api.MapGet("/periods", async (ISiteQueries site, CancellationToken ct) => Results.Ok(await site.GetPeriodsWithVotesAsync(ct)));
+
+        api.MapGet("/votes", async (
+            IVoteQueries votes,
+            [FromQuery(Name = "q")] string? query,
+            [FromQuery] int? period,
+            [FromQuery] VoteType? type,
+            [FromQuery] bool? passed,
+            [FromQuery] CaseType? caseType,
+            CancellationToken ct,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50) =>
+        {
+            var result = await votes.SearchAsync(new VoteFilter(query, period, type, passed, caseType), Clamp(page), ClampSize(pageSize), ct);
+            return Results.Ok(result);
+        });
+
+        api.MapGet("/votes/{id:int}", async (int id, IVoteQueries votes, CancellationToken ct) =>
+            await votes.GetAsync(id, ct) is { } vote ? Results.Ok(vote) : Results.NotFound());
+
+        api.MapGet("/politicians", async (
+            IPoliticianQueries politicians,
+            [FromQuery(Name = "q")] string? query,
+            [FromQuery] string? party,
+            CancellationToken ct,
+            [FromQuery] bool current = false,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50) =>
+            Results.Ok(await politicians.SearchAsync(new PoliticianFilter(query, party, current), Clamp(page), ClampSize(pageSize), ct)));
+
+        api.MapGet("/politicians/{id:int}", async (int id, IPoliticianQueries politicians, CancellationToken ct) =>
+            await politicians.GetProfileAsync(id, ct) is { } profile ? Results.Ok(profile) : Results.NotFound());
+
+        api.MapGet("/politicians/{id:int}/ballots", async (
+            int id,
+            IPoliticianQueries politicians,
+            [FromQuery] int? period,
+            [FromQuery] BallotType? ballot,
+            [FromQuery] VoteType? voteType,
+            [FromQuery(Name = "q")] string? query,
+            [FromQuery] string? format,
+            CancellationToken ct,
+            [FromQuery] bool dissentOnly = false,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 50) =>
+        {
+            var filter = new BallotFilter(period, ballot, voteType, dissentOnly, query);
+            if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var all = await politicians.GetBallotsAsync(id, filter, 1, 100_000, ct);
+                return Results.Text(ToCsv(all.Items), "text/csv", Encoding.UTF8);
+            }
+
+            return Results.Ok(await politicians.GetBallotsAsync(id, filter, Clamp(page), ClampSize(pageSize), ct));
+        });
+
+        api.MapGet("/parties", async (IPartyQueries parties, CancellationToken ct) => Results.Ok(await parties.ListAsync(ct)));
+        api.MapGet("/parties/{shortName}", async (string shortName, IPartyQueries parties, CancellationToken ct) =>
+            await parties.GetAsync(shortName, ct) is { } party ? Results.Ok(party) : Results.NotFound());
+
+        api.MapGet("/cases/{id:int}", async (int id, ICaseQueries cases, CancellationToken ct) =>
+            await cases.GetAsync(id, ct) is { } detail ? Results.Ok(detail) : Results.NotFound());
+
+        return app;
+    }
+
+    private static int Clamp(int page) => page < 1 ? 1 : page;
+
+    private static int ClampSize(int pageSize) => pageSize is < 1 or > 200 ? 50 : pageSize;
+
+    internal static string ToCsv(IReadOnlyList<PoliticianBallotRow> rows)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("vote_id,date,case_number,title,vote_type,passed,ballot,party,party_majority,dissents_from_party");
+        foreach (var r in rows)
+        {
+            sb.Append(r.VoteId).Append(',')
+              .Append(r.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)).Append(',')
+              .Append(Quote(r.CaseNumber)).Append(',')
+              .Append(Quote(r.Title)).Append(',')
+              .Append(r.VoteType).Append(',')
+              .Append(r.Passed ? "true" : "false").Append(',')
+              .Append(r.Ballot).Append(',')
+              .Append(Quote(r.PartyShortName)).Append(',')
+              .Append(r.PartyMajority?.ToString() ?? string.Empty).Append(',')
+              .Append(r.DissentsFromParty ? "true" : "false")
+              .AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    private static string Quote(string? value) =>
+        value is null ? string.Empty : "\"" + value.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+}

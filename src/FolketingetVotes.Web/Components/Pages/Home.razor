@@ -1,0 +1,54 @@
+@page "/"
+@inject ISiteQueries Site
+
+<PageTitle>Folketingets afstemninger – hvem stemte hvad?</PageTitle>
+
+<h1>Hvem stemte for, og hvem stemte imod?</h1>
+<p class="lead">
+    Alle afstemninger i Folketingssalen siden oktober 2004, fordelt på partier og politikere. Tallene kommer direkte fra
+    Folketingets åbne data og vises uden fortolkning.
+</p>
+
+@if (overview is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="Afstemninger" Value="@Labels.Number(overview.VoteCount)" Note="@(overview.EarliestVote is { } e ? $"siden {Labels.Date(e)}" : null)" />
+        <StatTile Label="Afgivne stemmer" Value="@Labels.Number(overview.BallotCount)" Note="inkl. registreret fravær" />
+        <StatTile Label="Politikere med stemmer" Value="@Labels.Number(overview.PoliticianCount)" />
+        <StatTile Label="Senest opdateret" Value="@(overview.LastSyncCompletedAt is { } s ? Labels.DateShort(s.ToLocalTime()) : "–")" Note="@(overview.LatestVote is { } l ? $"seneste afstemning {Labels.Date(l)}" : null)" />
+    </div>
+
+    <h2>Seneste afstemninger</h2>
+    @if (overview.LatestVotes.Count == 0)
+    {
+        <div class="notice">Der er ingen data endnu. Kør <code>dotnet run --project src/FolketingetVotes.Ingest -- sync</code> for at hente afstemninger.</div>
+    }
+    else
+    {
+        <VoteList Votes="overview.LatestVotes" />
+        <p><a class="btn secondary" href="/afstemninger">Alle afstemninger →</a></p>
+    }
+
+    <div class="grid grid-2" style="margin-top:1.5rem">
+        <div class="card">
+            <h3>Politikere</h3>
+            <p class="small">Se hver politikers stemmehistorik, fremmøde og hvor ofte de stemmer som deres gruppe.</p>
+            <a href="/politikere">Find en politiker →</a>
+        </div>
+        <div class="card">
+            <h3>Partier</h3>
+            <p class="small">Medlemmer, sammenhold og fremmøde pr. folketingsår – og partiernes offentliggjorte bidragydere.</p>
+            <a href="/partier">Se partierne →</a>
+        </div>
+    </div>
+}
+
+@code {
+    private SiteOverview? overview;
+
+    protected override async Task OnInitializedAsync() => overview = await Site.GetOverviewAsync();
+}

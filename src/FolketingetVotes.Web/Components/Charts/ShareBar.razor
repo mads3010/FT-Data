@@ -1,0 +1,15 @@
+@* A single ratio as a thin bar with a lighter track, labelled directly. *@
+<div class="bar-rows">
+    <div class="label">@Label</div>
+    <div class="stack" role="img" aria-label="@Label: @Labels.Percent(Value)">
+        <div class="seg @Css" style="flex: @Math.Round((Value ?? 0) * 1000) 1 0"></div>
+        <div class="seg" style="flex: @Math.Round((1 - (Value ?? 0)) * 1000) 1 0; background: var(--surface-2)"></div>
+    </div>
+    <div class="value">@Labels.Percent(Value)</div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public double? Value { get; set; }
+    [Parameter] public string Css { get; set; } = "for";
+}

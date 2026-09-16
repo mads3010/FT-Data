@@ -1,0 +1,20 @@
+@if (TotalPages > 1)
+{
+    <nav class="pager" aria-label="Sider">
+        @if (Page > 1)
+        {
+            <a class="btn secondary" href="@Href(Page - 1)">← Forrige</a>
+        }
+        <span>Side @Page af @TotalPages</span>
+        @if (Page < TotalPages)
+        {
+            <a class="btn secondary" href="@Href(Page + 1)">Næste →</a>
+        }
+    </nav>
+}
+
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter, EditorRequired] public Func<int, string> Href { get; set; } = _ => "#";
+}

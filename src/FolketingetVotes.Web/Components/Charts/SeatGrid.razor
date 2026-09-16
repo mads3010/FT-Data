@@ -1,0 +1,22 @@
+@* Every member as a small square, grouped by party and coloured by ballot; each square links to the member. *@
+<div class="seats">
+    @foreach (var group in Ballots.GroupBy(b => b.PartyShortName).OrderByDescending(g => g.Count()).ThenBy(g => g.Key))
+    {
+        <div class="seat-row">
+            <div class="label"><PartyChip ShortName="@group.Key" Placeholder="Uden gruppe" /> <span class="muted small">@group.Count()</span></div>
+            <div class="seat-cells">
+                @foreach (var b in group.OrderBy(b => b.Ballot).ThenBy(b => b.Name))
+                {
+                    <a class="seat @Labels.BallotCss(b.Ballot)" href="/politikere/@b.ActorId" title="@Title(b)" aria-label="@Title(b)"></a>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BallotRow> Ballots { get; set; } = [];
+
+    private static string Title(BallotRow b)
+        => b.DissentsFromParty ? $"{b.Name}: {Labels.Ballot(b.Ballot)} (afveg fra gruppens flertal)" : $"{b.Name}: {Labels.Ballot(b.Ballot)}";
+}

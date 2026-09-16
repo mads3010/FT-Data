@@ -1,0 +1,113 @@
+@page "/afstemninger/{Id:int}"
+@inject IVoteQueries VoteQueries
+@inject NavigationManager Navigation
+
+@if (detail is null)
+{
+    <PageTitle>Afstemning</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    var v = detail.Vote;
+    <PageTitle>@v.Title – afstemning @Labels.DateShort(v.Date)</PageTitle>
+
+    <p class="muted small">
+        <a href="/afstemninger">Afstemninger</a> › @detail.PeriodTitle
+        @if (detail.Case is not null)
+        {
+            <text> › <a href="/sager/@detail.Case.CaseId">@detail.Case.Number</a></text>
+        }
+    </p>
+    <h1>@v.Title</h1>
+    <p class="lead">
+        <ResultBadge Passed="v.Passed" />
+        @Labels.VoteType(v.Type)
+        @if (v.StepTitle is not null)
+        {
+            <text> · @v.StepTitle</text>
+        }
+        · @Labels.DateTime(v.Date)
+    </p>
+
+    <div class="tiles">
+        <StatTile Label="For" Value="@v.ForCount.ToString()" />
+        <StatTile Label="Imod" Value="@v.AgainstCount.ToString()" />
+        <StatTile Label="Hverken for eller imod" Value="@v.AbstainCount.ToString()" />
+        <StatTile Label="Fraværende" Value="@v.AbsentCount.ToString()" Note="@($"{v.Total} medlemmer i alt")" />
+    </div>
+
+    @if (detail.Case is not null)
+    {
+        <div class="card">
+            <h3 style="margin-top:0">@Labels.CaseType(detail.Case.Type) @detail.Case.Number</h3>
+            <p>@detail.Case.Title</p>
+            <p><a href="/sager/@detail.Case.CaseId">Se sagen, forslagsstillere og alle afstemninger i sagen →</a></p>
+        </div>
+    }
+
+    <h2>Fordeling pr. parti</h2>
+    <PartyBreakdownChart Parties="detail.Parties" />
+
+    <h2>Alle medlemmer</h2>
+    <p class="small muted">Hvert felt er et medlem; hold musen over eller klik for at se hvem. Grupperet efter den gruppe medlemmet tilhørte på afstemningsdagen.</p>
+    <SeatGrid Ballots="detail.Ballots" />
+
+    @if (dissenters.Count > 0)
+    {
+        <h2>Stemte anderledes end deres gruppes flertal</h2>
+        <p class="small muted">Medlemmer, der var til stede og stemte anderledes end flertallet af de tilstedeværende i deres egen gruppe.</p>
+        <ul class="list">
+            @foreach (var b in dissenters)
+            {
+                <li>
+                    <div class="person"><span class="title"><a href="/politikere/@b.ActorId">@b.Name</a></span> <PartyChip ShortName="@b.PartyShortName" /></div>
+                    <BallotBadge Type="b.Ballot" />
+                </li>
+            }
+        </ul>
+    }
+
+    @if (detail.Conclusion is not null)
+    {
+        <h2>Folketingets konklusion</h2>
+        <pre class="conclusion">@detail.Conclusion</pre>
+    }
+
+    <h2>Stemmer</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Medlem</th><th>Gruppe</th><th>Stemme</th></tr></thead>
+            <tbody>
+                @foreach (var b in detail.Ballots.OrderBy(b => b.PartyShortName).ThenBy(b => b.Name))
+                {
+                    <tr>
+                        <td><a href="/politikere/@b.ActorId">@b.Name</a></td>
+                        <td><PartyChip ShortName="@b.PartyShortName" Placeholder="–" /></td>
+                        <td><BallotBadge Type="b.Ballot" /> @if (b.DissentsFromParty) { <span class="dissent">afveg fra gruppen</span> }</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="small muted">Rådata: <a href="/api/v1/votes/@Id">JSON</a></p>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private VoteDetail? detail;
+    private List<BallotRow> dissenters = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        detail = await VoteQueries.GetAsync(Id);
+        if (detail is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        dissenters = detail.Ballots.Where(b => b.DissentsFromParty).OrderBy(b => b.PartyShortName).ThenBy(b => b.Name).ToList();
+    }
+}

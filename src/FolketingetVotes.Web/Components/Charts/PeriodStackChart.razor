@@ -1,0 +1,14 @@
+@* Small multiples: one stacked bar per session (newest first) for a politician's ballots. *@
+<BallotLegend />
+<div class="bar-rows">
+    @foreach (var row in Rows)
+    {
+        <div class="label" title="@row.PeriodTitle">@row.PeriodTitle</div>
+        <BallotStack ForCount="row.Stats.ForCount" AgainstCount="row.Stats.AgainstCount" AbstainCount="row.Stats.AbstainCount" AbsentCount="row.Stats.AbsentCount" />
+        <div class="value">@Labels.Number(row.Stats.Total) afstemn. · deltagelse @Labels.Percent(row.Stats.AttendanceRate)</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PoliticianPeriodStatsRow> Rows { get; set; } = [];
+}

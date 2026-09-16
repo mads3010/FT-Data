@@ -1,0 +1,13 @@
+<div class="legend" aria-hidden="true">
+    <span class="ballot for">For</span>
+    <span class="ballot against">Imod</span>
+    <span class="ballot abstain">Hverken for eller imod</span>
+    @if (IncludeAbsent)
+    {
+        <span class="ballot absent">Fraværende</span>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IncludeAbsent { get; set; } = true;
+}

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Domain entities, enums, read models and abstractions. No infrastructure dependencies.</Description>
+  </PropertyGroup>
+</Project>

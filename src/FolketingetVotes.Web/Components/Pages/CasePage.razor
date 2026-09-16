@@ -1,0 +1,133 @@
+@page "/sager/{Id:int}"
+@inject ICaseQueries Cases
+@inject FolketingetVotes.Core.Abstractions.ISummaryProvider Summaries
+@inject NavigationManager Navigation
+
+@if (detail is null)
+{
+    <PageTitle>Sag</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    var c = detail.Case;
+    <PageTitle>@c.Number – @(c.ShortTitle ?? c.Title)</PageTitle>
+    <p class="muted small"><a href="/afstemninger">Afstemninger</a> › @c.PeriodTitle › @Labels.CaseType(c.Type)</p>
+    <h1>@c.Number: @(c.ShortTitle ?? c.Title)</h1>
+    @if (c.ShortTitle is not null)
+    {
+        <p class="lead">@c.Title</p>
+    }
+    <p><span class="badge neutral">@(c.StatusName ?? "Status ukendt")</span></p>
+
+    @if (detail.Summary is not null)
+    {
+        <h2>Folketingets resumé</h2>
+        <p>@detail.Summary</p>
+    }
+
+    @if (summary is not null)
+    {
+        <h2>Kort fortalt <span class="badge neutral">maskingenereret</span></h2>
+        <div class="card">
+            <dl class="facts">
+                <dt>Hvad handler det om</dt><dd>@summary.WhatItIsAbout</dd>
+                <dt>Hvad gør forslaget konkret</dt><dd>@summary.WhatItDoes</dd>
+                <dt>Hvorfor</dt><dd>@summary.WhyItIsProposed</dd>
+                <dt>Foreslået af</dt><dd>@summary.ProposedBy</dd>
+            </dl>
+            <p class="small muted">Genereret af @summary.Provider (@summary.Model) @Labels.DateShort(summary.GeneratedAt). Kontrollér altid mod <a href="@(summary.SourceUrl ?? detail.FolketingstidendeUrl)">kildeteksten</a>.</p>
+        </div>
+    }
+
+    <h2>Hvem står bag</h2>
+    @if (detail.Actors.Count == 0)
+    {
+        <p class="muted">Ingen registrerede aktører.</p>
+    }
+    else
+    {
+        <ul class="list">
+            @foreach (var a in detail.Actors)
+            {
+                <li>
+                    <span class="title">@if (a.ActorType == ActorType.Person) { <a href="/politikere/@a.ActorId">@a.Name</a> } else { @a.Name }</span>
+                    <span class="muted small">@a.RoleName</span>
+                </li>
+            }
+        </ul>
+    }
+
+    <h2>Afstemninger i sagen</h2>
+    @if (detail.Votes.Count == 0)
+    {
+        <p class="muted">Der er ikke registreret afstemninger i salen for denne sag.</p>
+    }
+    else
+    {
+        <VoteList Votes="detail.Votes" />
+    }
+
+    @if (detail.VotingConclusion is not null)
+    {
+        <h2>Afstemningskonklusion</h2>
+        <pre class="conclusion">@detail.VotingConclusion</pre>
+    }
+
+    <h2>Dokumenter og kilder</h2>
+    <dl class="facts">
+        @if (detail.FolketingstidendeUrl is not null)
+        {
+            <dt>Folketingstidende</dt><dd><a href="@detail.FolketingstidendeUrl" rel="noopener">Sagen med alle dokumenter</a></dd>
+        }
+        @if (detail.BillTextPdfUrl is not null)
+        {
+            <dt>Forslaget som fremsat</dt><dd><a href="@detail.BillTextPdfUrl" rel="noopener">PDF med bemærkninger</a></dd>
+        }
+        @if (detail.LawNumber is not null)
+        {
+            <dt>Lov</dt><dd>Lov nr. @detail.LawNumber @(detail.LawDate is { } d ? "af " + Labels.Date(d) : "")</dd>
+        }
+        @if (detail.RetsinformationUrl is not null)
+        {
+            <dt>Retsinformation</dt><dd><a href="@detail.RetsinformationUrl" rel="noopener">@detail.RetsinformationUrl</a></dd>
+        }
+        <dt>Åbne data</dt><dd><a href="https://oda.ft.dk/api/Sag(@Id)?$format=json" rel="noopener">oda.ft.dk</a> · <a href="/api/v1/cases/@Id">JSON</a></dd>
+    </dl>
+
+    <h2>Sagens forløb</h2>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Dato</th><th>Trin</th><th>Status</th></tr></thead>
+            <tbody>
+                @foreach (var s in detail.Steps)
+                {
+                    <tr>
+                        <td class="nowrap">@(s.Date is { } d ? Labels.DateShort(d) : "–")</td>
+                        <td>@s.Title @if (s.TypeName is not null && s.TypeName != s.Title) { <span class="muted small">(@s.TypeName)</span> }</td>
+                        <td class="small muted">@s.StatusName</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private CaseDetail? detail;
+    private FolketingetVotes.Core.Abstractions.BillSummaryContent? summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        detail = await Cases.GetAsync(Id);
+        if (detail is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        summary = await Summaries.GetSummaryAsync(Id);
+    }
+}

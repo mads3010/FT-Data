@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <Description>Blazor web app (static server rendering) presenting votes, politicians, parties and cases.</Description>
+    <UserSecretsId>folketinget-votes</UserSecretsId>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FolketingetVotes.Data\FolketingetVotes.Data.csproj" />
+  </ItemGroup>
+</Project>

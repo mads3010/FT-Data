@@ -1,0 +1,115 @@
+@page "/partier/{ShortName}"
+@inject IPartyQueries Parties
+@inject NavigationManager Navigation
+
+@if (party is null)
+{
+    <PageTitle>Parti</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    <PageTitle>@party.Name (@party.ShortName)</PageTitle>
+    <p class="muted small"><a href="/partier">Partier</a></p>
+    <h1><span class="chip" style="font-size:1rem"><span class="swatch" style="background:@PartyColors.For(party.ShortName)"></span>@party.ShortName</span> @party.Name</h1>
+
+    <h2>Fremmøde og sammenhold pr. folketingsår</h2>
+    <p class="small muted">Sammenhold: andel af gruppens afgivne stemmer (for/imod/hverken), der fulgte gruppens flertal i den enkelte afstemning.</p>
+    @if (party.PerPeriod.Count == 0)
+    {
+        <p class="muted">Ingen afstemningsdata for gruppen.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Folketingsår</th><th class="num">Medlemmer</th><th class="num">Stemmer</th><th>Fremmøde</th><th>Sammenhold</th></tr></thead>
+                <tbody>
+                    @foreach (var r in party.PerPeriod)
+                    {
+                        <tr>
+                            <td>@r.PeriodTitle</td>
+                            <td class="num">@r.Members</td>
+                            <td class="num">@Labels.Number(r.Ballots)</td>
+                            <td style="min-width:180px"><ShareBar Label="@Labels.Percent(r.AttendanceRate)" Value="r.AttendanceRate" Css="for" /></td>
+                            <td style="min-width:180px"><ShareBar Label="@Labels.Percent(r.CohesionRate)" Value="r.CohesionRate" Css="abstain" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <h2>Nuværende medlemmer (@party.CurrentMembers.Count)</h2>
+    @if (party.CurrentMembers.Count == 0)
+    {
+        <p class="muted">Gruppen har ingen nuværende medlemmer i datasættet.</p>
+    }
+    else
+    {
+        <ul class="list">
+            @foreach (var m in party.CurrentMembers)
+            {
+                <li>
+                    <div class="person"><Avatar PictureUrl="@m.PictureUrl" Name="@m.Name" /><a href="/politikere/@m.ActorId">@m.Name</a></div>
+                    <span class="muted small">siden @Labels.Date(m.Since)</span>
+                </li>
+            }
+        </ul>
+    }
+
+    <h2>Private bidrag ifølge partiregnskaberne</h2>
+    @if (party.Accounts.Count == 0)
+    {
+        <p class="muted">
+            Ingen partiregnskaber er importeret for denne gruppe. Folketinget offentliggør partiernes regnskaber som PDF; de kan importeres med
+            <code>import-party-accounts</code>. Se <a href="/om#bidrag">metode</a>.
+        </p>
+    }
+    else
+    {
+        <p class="small muted">Bidragydere, som partiet selv har oplyst i sit regnskab, fordi bidraget oversteg lovens grænse (ca. 20.000 kr. pr. år). Beløb vises kun, når regnskabet angiver det.</p>
+        @foreach (var a in party.Accounts)
+        {
+            <h3>@a.Year <span class="muted small">(kilde: @a.SourceFile)</span></h3>
+            @if (a.Donations.Count == 0)
+            {
+                <p class="muted small">Ingen bidrag over grænsen fundet i regnskabet.</p>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Bidragyder</th><th>Adresse</th><th class="num">Beløb</th><th class="num">Side</th></tr></thead>
+                        <tbody>
+                            @foreach (var d in a.Donations)
+                            {
+                                <tr title="@d.RawText">
+                                    <td>@d.DonorName</td>
+                                    <td class="small muted">@d.DonorAddress</td>
+                                    <td class="num">@Labels.Money(d.Amount)</td>
+                                    <td class="num">@d.SourcePage</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+    }
+}
+
+@code {
+    [Parameter] public string ShortName { get; set; } = string.Empty;
+
+    private PartyDetail? party;
+
+    protected override async Task OnInitializedAsync()
+    {
+        party = await Parties.GetAsync(ShortName);
+        if (party is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+}

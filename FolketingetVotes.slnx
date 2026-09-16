@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FolketingetVotes.Core/FolketingetVotes.Core.csproj" />
+    <Project Path="src/FolketingetVotes.Data/FolketingetVotes.Data.csproj" />
+    <Project Path="src/FolketingetVotes.Ingest/FolketingetVotes.Ingest.csproj" />
+    <Project Path="src/FolketingetVotes.Web/FolketingetVotes.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FolketingetVotes.Core.Tests/FolketingetVotes.Core.Tests.csproj" />
+    <Project Path="tests/FolketingetVotes.Data.Tests/FolketingetVotes.Data.Tests.csproj" />
+    <Project Path="tests/FolketingetVotes.Web.Tests/FolketingetVotes.Web.Tests.csproj" />
+  </Folder>
+</Solution>

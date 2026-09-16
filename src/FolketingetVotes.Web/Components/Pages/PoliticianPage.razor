@@ -1,0 +1,132 @@
+@page "/politikere/{Id:int}"
+@inject IPoliticianQueries Politicians
+@inject ISiteQueries Site
+@inject NavigationManager Navigation
+
+@if (profile is null)
+{
+    <PageTitle>Politiker</PageTitle>
+    <p>Indlæser…</p>
+}
+else
+{
+    <PageTitle>@profile.Name – stemmehistorik</PageTitle>
+    <p class="muted small"><a href="/politikere">Politikere</a></p>
+    <div class="profile-head">
+        <Avatar PictureUrl="@profile.PictureUrl" Name="@profile.Name" Large="true" />
+        <div>
+            <h1>@profile.Name</h1>
+            <p class="lead">
+                <PartyChip ShortName="@profile.CurrentPartyShortName" />
+                @(profile.IsCurrentMember ? "Nuværende medlem af Folketinget" : "Tidligere medlem af Folketinget")
+            </p>
+        </div>
+    </div>
+
+    <div class="tiles">
+        <StatTile Label="Afstemninger" Value="@Labels.Number(profile.Overall.Total)" Note="registreret siden 2004" />
+        <StatTile Label="Fremmøde" Value="@Labels.Percent(profile.Overall.AttendanceRate)" Note="@($"{Labels.Number(profile.Overall.AbsentCount)} gange fraværende")" />
+        <StatTile Label="Stemte som gruppen" Value="@Labels.Percent(profile.Overall.PartyAgreementRate)" Note="@($"{Labels.Number(profile.Overall.AgainstPartyCount)} afvigelser")" />
+        <StatTile Label="For / imod / hverken" Value="@($"{Labels.Number(profile.Overall.ForCount)} / {Labels.Number(profile.Overall.AgainstCount)} / {Labels.Number(profile.Overall.AbstainCount)}")" />
+    </div>
+    <p class="small muted">
+        Fravær har mange legitime årsager (ministerrejser, sygdom, orlov, og Folketingets "clearing"-aftaler, hvor par af medlemmer bliver væk samtidig).
+        "Stemte som gruppen" sammenligner kun med gruppens flertal blandt de tilstedeværende. <a href="/om">Læs om metoden</a>.
+    </p>
+
+    <h2>Gruppetilhørsforhold</h2>
+    @if (profile.Memberships.Count == 0)
+    {
+        <p class="muted">Ingen registrerede gruppemedlemskaber.</p>
+    }
+    else
+    {
+        <MembershipTimeline Memberships="profile.Memberships" />
+    }
+
+    <h2>Stemmer pr. folketingsår</h2>
+    <PeriodStackChart Rows="profile.PerPeriod" />
+
+    <h2>Stemmehistorik</h2>
+    <form class="filters" method="get" action="/politikere/@Id">
+        <label>Søg i titel
+            <input type="search" name="q" value="@Query" />
+        </label>
+        <label>Folketingsår
+            <select name="period">
+                <option value="">Alle</option>
+                @foreach (var p in periods)
+                {
+                    <option value="@p.Id" selected="@(p.Id == Period)">@p.Title</option>
+                }
+            </select>
+        </label>
+        <label>Stemme
+            <select name="ballot">
+                <option value="">Alle</option>
+                @foreach (var b in Enum.GetValues<BallotType>())
+                {
+                    <option value="@b" selected="@(b == Ballot)">@Labels.Ballot(b)</option>
+                }
+            </select>
+        </label>
+        <label class="check"><input type="checkbox" name="dissent" value="true" checked="@Dissent" /> Kun afvigelser fra gruppen</label>
+        <button type="submit">Filtrér</button>
+    </form>
+
+    @if (ballots is not null)
+    {
+        <p class="muted small">@Labels.Number(ballots.TotalCount) afstemninger · <a href="/api/v1/politicians/@Id/ballots?format=csv@(Period is null ? "" : $"&period={Period}")">Hent som CSV</a></p>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>Dato</th><th>Afstemning</th><th>Stemme</th><th>Gruppens flertal</th><th>Resultat</th></tr></thead>
+                <tbody>
+                    @foreach (var b in ballots.Items)
+                    {
+                        <tr>
+                            <td class="nowrap">@Labels.DateShort(b.Date)</td>
+                            <td><a href="/afstemninger/@b.VoteId">@b.Title</a> <span class="muted small">@b.CaseNumber · @Labels.VoteType(b.VoteType)</span></td>
+                            <td><BallotBadge Type="b.Ballot" Short="true" /> @if (b.DissentsFromParty) { <span class="dissent">afveg</span> }</td>
+                            <td>@if (b.PartyMajority is { } m) { <BallotBadge Type="m" Short="true" /> } else { <span class="muted">–</span> }</td>
+                            <td><ResultBadge Passed="b.Passed" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <Pager Page="ballots.Page" TotalPages="ballots.TotalPages" Href="Href" />
+    }
+}
+
+@code {
+    private const int PageSize = 50;
+
+    [Parameter] public int Id { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "period")] public int? Period { get; set; }
+    [SupplyParameterFromQuery(Name = "ballot")] public string? BallotText { get; set; }
+    [SupplyParameterFromQuery(Name = "dissent")] public bool Dissent { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PoliticianProfile? profile;
+
+    private BallotType? Ballot => Enum.TryParse<BallotType>(BallotText, true, out var b) ? b : null;
+    private PagedResult<PoliticianBallotRow>? ballots;
+    private IReadOnlyList<PeriodOption> periods = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        profile = await Politicians.GetProfileAsync(Id);
+        if (profile is null)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        periods = await Site.GetPeriodsWithVotesAsync();
+        ballots = await Politicians.GetBallotsAsync(Id, new BallotFilter(Period, Ballot, null, Dissent, Query), Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build($"/politikere/{Id}",
+        ("q", Query), ("period", Period?.ToString()), ("ballot", Ballot?.ToString()), ("dissent", Dissent ? "true" : null), ("page", page.ToString()));
+}

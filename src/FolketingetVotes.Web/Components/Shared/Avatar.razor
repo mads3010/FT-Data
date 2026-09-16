@@ -1,0 +1,16 @@
+@if (!string.IsNullOrEmpty(PictureUrl))
+{
+    <img class="avatar @(Large ? "large" : null)" src="@PictureUrl" alt="" loading="lazy" referrerpolicy="no-referrer" />
+}
+else
+{
+    <span class="avatar @(Large ? "large" : null)" aria-hidden="true">@Initials</span>
+}
+
+@code {
+    [Parameter] public string? PictureUrl { get; set; }
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public bool Large { get; set; }
+
+    private string Initials => string.Concat(Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])));
+}

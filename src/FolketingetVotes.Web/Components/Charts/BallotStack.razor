@@ -1,0 +1,36 @@
+@* One horizontal stacked bar: for / against / abstain / absent. Widths are shares of the row total. *@
+<div class="stack" role="img" aria-label="@AriaLabel" title="@AriaLabel">
+    @foreach (var (css, count) in Segments)
+    {
+        if (count > 0)
+        {
+            <div class="seg @css" style="flex: @count 1 0"></div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public int ForCount { get; set; }
+    [Parameter] public int AgainstCount { get; set; }
+    [Parameter] public int AbstainCount { get; set; }
+    [Parameter] public int AbsentCount { get; set; }
+    [Parameter] public bool IncludeAbsent { get; set; } = true;
+
+    private IEnumerable<(string Css, int Count)> Segments
+    {
+        get
+        {
+            yield return ("for", ForCount);
+            yield return ("against", AgainstCount);
+            yield return ("abstain", AbstainCount);
+            if (IncludeAbsent)
+            {
+                yield return ("absent", AbsentCount);
+            }
+        }
+    }
+
+    private string AriaLabel => IncludeAbsent
+        ? $"For {ForCount}, imod {AgainstCount}, hverken for eller imod {AbstainCount}, fraværende {AbsentCount}"
+        : $"For {ForCount}, imod {AgainstCount}, hverken for eller imod {AbstainCount}";
+}

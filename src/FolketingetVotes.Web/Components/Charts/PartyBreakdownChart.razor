@@ -1,0 +1,17 @@
+@* Stacked bars per party for one vote, plus the same numbers as a table (the table is the accessible/relief view). *@
+<BallotLegend />
+<div class="bar-rows">
+    @foreach (var p in Parties)
+    {
+        <div class="label">
+            <PartyChip ShortName="@p.PartyShortName" Name="@p.PartyName" Placeholder="Uden gruppe" />
+        </div>
+        <BallotStack ForCount="p.ForCount" AgainstCount="p.AgainstCount" AbstainCount="p.AbstainCount" AbsentCount="p.AbsentCount" />
+        <div class="value">@p.ForCount / @p.AgainstCount / @p.AbstainCount / @p.AbsentCount</div>
+    }
+</div>
+<p class="small muted">Tal pr. parti: for / imod / hverken / fraværende.</p>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PartyVoteBreakdown> Parties { get; set; } = [];
+}

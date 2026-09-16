@@ -1,0 +1,16 @@
+@if (ShortName is null)
+{
+    <span class="chip muted">@(Placeholder)</span>
+}
+else
+{
+    <a class="chip" href="/partier/@Uri.EscapeDataString(ShortName)" title="@(Name ?? ShortName)">
+        <span class="swatch" style="background:@PartyColors.For(ShortName)"></span>@ShortName
+    </a>
+}
+
+@code {
+    [Parameter] public string? ShortName { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Ingen gruppe";
+}

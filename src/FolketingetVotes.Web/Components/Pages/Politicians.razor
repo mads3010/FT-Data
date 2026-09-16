@@ -1,0 +1,71 @@
+@page "/politikere"
+@inject IPoliticianQueries PoliticianQueries
+@inject IPartyQueries PartyQueries
+
+<PageTitle>Politikere</PageTitle>
+
+<h1>Politikere</h1>
+<p class="lead">Alle, der har afgivet stemmer i Folketingssalen siden oktober 2004. Fremmøde er andelen af afstemninger, hvor medlemmet stemte for, imod eller hverken/eller.</p>
+
+<form class="filters" method="get" action="/politikere">
+    <label>Navn
+        <input type="search" name="q" value="@Query" placeholder="Søg på navn" />
+    </label>
+    <label>Parti
+        <select name="party">
+            <option value="">Alle</option>
+            @foreach (var p in parties)
+            {
+                <option value="@p.ShortName" selected="@(p.ShortName == Party)">@p.Name (@p.ShortName)</option>
+            }
+        </select>
+    </label>
+    <label class="check"><input type="checkbox" name="current" value="true" checked="@Current" /> Kun nuværende medlemmer</label>
+    <button type="submit">Søg</button>
+</form>
+
+@if (result is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <p class="muted small">@Labels.Number(result.TotalCount) politikere</p>
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Navn</th><th>Parti</th><th class="num">Afstemninger</th><th class="num">Fremmøde</th></tr></thead>
+            <tbody>
+                @foreach (var p in result.Items)
+                {
+                    <tr>
+                        <td><div class="person"><Avatar PictureUrl="@p.PictureUrl" Name="@p.Name" /><a href="/politikere/@p.ActorId">@p.Name</a>@if (!p.IsCurrentMember) { <span class="muted small">(tidligere)</span> }</div></td>
+                        <td><PartyChip ShortName="@p.PartyShortName" Placeholder="–" /></td>
+                        <td class="num">@Labels.Number(p.BallotCount)</td>
+                        <td class="num">@Labels.Percent(p.AttendanceRate)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <Pager Page="result.Page" TotalPages="result.TotalPages" Href="Href" />
+}
+
+@code {
+    private const int PageSize = 50;
+
+    [SupplyParameterFromQuery(Name = "q")] public string? Query { get; set; }
+    [SupplyParameterFromQuery(Name = "party")] public string? Party { get; set; }
+    [SupplyParameterFromQuery(Name = "current")] public bool Current { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? Page { get; set; }
+
+    private PagedResult<PoliticianListItem>? result;
+    private IReadOnlyList<PartyListItem> parties = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        parties = await PartyQueries.ListAsync();
+        result = await PoliticianQueries.SearchAsync(new PoliticianFilter(Query, Party, Current), Math.Max(1, Page ?? 1), PageSize);
+    }
+
+    private string Href(int page) => QueryString.Build("/politikere", ("q", Query), ("party", Party), ("current", Current ? "true" : null), ("page", page.ToString()));
+}

@@ -1,0 +1,37 @@
+@page "/partier"
+@inject IPartyQueries PartyQueries
+
+<PageTitle>Partier</PageTitle>
+
+<h1>Partier og folketingsgrupper</h1>
+<p class="lead">Alle grupper, der har haft medlemmer i Folketingssalen i datasættet. Farverne er de gængse partifarver og bruges kun som kendetegn.</p>
+
+@if (parties is null)
+{
+    <p>Indlæser…</p>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="data">
+            <thead><tr><th>Parti</th><th>Forkortelse</th><th class="num">Medlemmer nu</th><th>Periode i data</th></tr></thead>
+            <tbody>
+                @foreach (var p in parties)
+                {
+                    <tr>
+                        <td><a href="/partier/@Uri.EscapeDataString(p.ShortName)"><span class="chip"><span class="swatch" style="background:@PartyColors.For(p.ShortName)"></span>@p.Name</span></a></td>
+                        <td>@p.ShortName</td>
+                        <td class="num">@p.CurrentMembers</td>
+                        <td class="small muted">@(p.FirstSeen is { } f ? f.Year.ToString() : "?") – @(p.LastSeen is { } l ? l.Year.ToString() : "?")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<PartyListItem>? parties;
+
+    protected override async Task OnInitializedAsync() => parties = await PartyQueries.ListAsync();
+}

@@ -1,0 +1,52 @@
+@page "/om"
+
+<PageTitle>Om og metode</PageTitle>
+
+<h1>Om siden og metoden</h1>
+<p class="lead">Formålet er gennemsigtighed i lovgivningsarbejdet: hvem stemmer for og imod hvad, og hvor ofte. Siden tager ikke stilling og tilføjer ingen vurderinger.</p>
+
+<h2>Datakilder</h2>
+<ul>
+    <li><strong>Folketingets åbne data</strong> (<a href="https://oda.ft.dk/">oda.ft.dk</a>): alle afstemninger, hver enkelt stemme, sager, sagstrin, aktører og gruppemedlemskaber. Data hentes automatisk og opdateres løbende.</li>
+    <li><strong>Folketingstidende</strong> (<a href="https://www.folketingstidende.dk/">folketingstidende.dk</a>): links til forslagene som fremsat, betænkninger og referater.</li>
+    <li><strong>Partiregnskaber</strong>: Folketinget offentliggør partiernes årsregnskaber som PDF. De importeres manuelt (se nedenfor).</li>
+</ul>
+
+<h2>Sådan beregnes tallene</h2>
+<dl class="facts">
+    <dt>For / imod / hverken</dt><dd>Direkte fra Folketingets registrering af hver stemme (Stemmetype). "Hverken for eller imod" er en aktiv stemme.</dd>
+    <dt>Fraværende</dt><dd>Folketinget registrerer fravær for hvert medlem ved hver afstemning. Fravær har mange årsager: ministerrejser, sygdom, orlov og "clearing", hvor et medlem fra hver side aftaler at blive væk, så flertallet ikke ændres. Fravær er derfor ikke i sig selv et mål for indsats.</dd>
+    <dt>Fremmøde</dt><dd>Andel af afstemninger, hvor medlemmet afgav en stemme (for, imod eller hverken). Beregnes kun for afstemninger, hvor medlemmet var registreret.</dd>
+    <dt>Gruppe på afstemningsdagen</dt><dd>Folketingets data indeholder én folketingsgruppe pr. folketingsår med medlemskaber inkl. datoer. Hver stemme knyttes til den gruppe, medlemmet tilhørte den dag. For medlemmer, hvor Folketingets data mangler gruppetilknytningen (det gælder omkring hvert ottende medlem), bruges i stedet medlemmets egen biografi ("Folketingsmedlem for … i …, dato – dato"), og som sidste udvej det parti, biografien angiver. Løsgængere står som "UFG"; kan gruppen ikke afgøres, vises "Uden gruppe".</dd>
+    <dt>Gruppens flertal</dt><dd>Den stemme, flest tilstedeværende gruppemedlemmer afgav i den enkelte afstemning. Ved stemmelighed eller hvis ingen var til stede, er der ikke noget flertal.</dd>
+    <dt>Stemte som gruppen / sammenhold</dt><dd>Andel af medlemmets (eller gruppens) afgivne stemmer, der var lig med gruppens flertal. Fravær tæller ikke med. Medlemmets egen stemme indgår i flertallet.</dd>
+    <dt>Vedtaget / forkastet</dt><dd>Folketingets egen registrering af udfaldet (feltet "vedtaget").</dd>
+</dl>
+
+<h2>Begrænsninger</h2>
+<ul>
+    <li>Registrerede stemmer for hvert medlem findes fra folketingsåret 2004-05 (oktober 2004). Ældre afstemninger findes kun som tekst i Folketingstidende.</li>
+    <li>Mange beslutninger træffes uden afstemning (enstemmigt eller ved udvalgsindstilling) og optræder derfor ikke her.</li>
+    <li>Data spejler Folketingets registreringer; fejl i kilden går igen her. Ved tvivl gælder Folketingstidende.</li>
+    <li>Partifarver bruges kun som kendetegn og følger den gængse mediefremstilling.</li>
+</ul>
+
+<h2 id="bidrag">Private bidrag til partierne</h2>
+<p>
+    Efter partiregnskabsloven skal partier oplyse navn, adresse og samlet beløb for bidragydere, der har givet mere end lovens grænse
+    (20.000 kr. i 2017-niveau, indeksreguleret) i et regnskabsår. Regnskaberne indsendes til Folketinget og offentliggøres som samlede PDF-filer.
+    Siden viser præcis de oplysninger, partierne selv har opgivet, med henvisning til side i kildefilen. Automatisk parsing af PDF-filerne er
+    usikker; hver post kan derfor kontrolleres mod den rå tekst (hold musen over rækken).
+</p>
+
+<h2>Maskingenererede resuméer</h2>
+<p>
+    Siden er forberedt til korte, neutrale resuméer af lovforslag (hvad handler det om, hvad gør det, hvorfor, hvem foreslår det). Funktionen er ikke
+    slået til endnu. Når den er, markeres resuméerne tydeligt som maskingenererede og linker altid til forslagets egen tekst.
+</p>
+
+<h2>Åben kode og data</h2>
+<p>
+    Kildekoden ligger som et åbent projekt, og alle tal kan hentes som JSON via <code>/api/v1/…</code> (fx <a href="/api/v1/status">/api/v1/status</a>).
+    Politikeres stemmehistorik kan hentes som CSV fra deres side.
+</p>

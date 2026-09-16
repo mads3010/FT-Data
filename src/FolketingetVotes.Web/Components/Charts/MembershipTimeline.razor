@@ -1,0 +1,15 @@
+@* Party membership over time as labelled spans (colour = party identity swatch, text carries the facts). *@
+<div class="timeline">
+    @foreach (var m in Memberships)
+    {
+        <div><PartyChip ShortName="@m.PartyShortName" Name="@m.PartyName" /></div>
+        <div>
+            <span class="small">@Labels.Date(m.StartDate) – @(m.EndDate is null ? "nu" : Labels.Date(m.EndDate.Value))</span>
+            <span class="muted small">(@m.PartyName)</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<PartyMembershipRow> Memberships { get; set; } = [];
+}

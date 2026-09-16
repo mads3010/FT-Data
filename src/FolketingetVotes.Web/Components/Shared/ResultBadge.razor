@@ -1,0 +1,5 @@
+<span class="badge @(Passed ? "passed" : "rejected")">@Labels.Result(Passed)</span>
+
+@code {
+    [Parameter] public bool Passed { get; set; }
+}
