@@ -198,3 +198,9 @@ figure.chart .seat-absent { fill: var(--absent); stroke: var(--absent-ink); stro
 figure.chart a:hover circle { stroke: var(--text); stroke-width: 2; }
 .legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
 .legend-item .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* ---------- Explorer ---------- */
+form.explorer { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.6rem 0.9rem; align-items: start; }
+form.explorer label { display: flex; flex-direction: column; }
+form.explorer select[multiple] { min-height: 8.5rem; }
+form.explorer button { align-self: end; justify-self: start; }
