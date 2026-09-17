@@ -17,7 +17,7 @@ The site is a Danish-language, server-rendered web app (installable as a PWA) wi
 
 See [docs/architecture.md](docs/architecture.md) for the reasoning and [docs/adr](docs/adr) for the decisions.
 
-Views: votes, politicians (with ministerial periods, proposals, comparison), parties, sessions (agreement matrix, closest votes), topics, case search, donor index, Atom feed, sitemap and a JSON/CSV API. Everything is documented in [docs/features.md](docs/features.md).
+Views: votes (hemicycle and plain-language summary), politicians (career timeline, ministerial and leave periods, proposals, comparison), parties, sessions (agreement matrix, closest votes, legislation outcomes), topics, questions to ministers, case search, donor index, a **data explorer** for designing your own charts, Atom feeds, sitemap and a JSON/CSV API. Everything is documented in [docs/features.md](docs/features.md).
 
 ## Quick start
 

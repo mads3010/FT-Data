@@ -2,6 +2,13 @@
 
 Newest first. Keep this short; details belong in features.md / roadmap.md.
 
+## 2026-09-17 (v0.4) — explorer and visuals
+
+- Shared SVG chart components (bar, line, donut, timeline band, hemicycle), no JavaScript.
+- Data explorer at `/udforsk`: metric × parties/members × period × grouping, four chart types, shareable links, CSV/JSON.
+- Vote pages: hemicycle and a plain-language summary; home page: votes per month and attendance per group this session; profiles: career timeline and attendance trend; party and session pages: trend and attendance charts.
+- Done on branch `feature/explorer-and-visuals` in stage commits; v0.3.0 tagged before, v0.4.0 after the merge.
+
 ## 2026-09-16 (v0.3) — issues #1–#16 filed, ten implemented
 
 - Filed 16 feature issues on GitHub with priorities; implemented the P1 set: questions to ministers, leave periods, legislation outcomes, party switchers, party-difference page, topic trends, session dissent list, composition, global search with trigram indexes, per-member/topic feeds and OpenAPI, data-quality page.

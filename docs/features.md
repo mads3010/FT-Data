@@ -93,6 +93,14 @@ Topic pages show votes per session (all, final passages, passed) with links; `?p
 
 A header search box (`/soeg`) queries politicians, cases, topics, donors and questions together; trigram indexes (pg_trgm) on case titles, keyword names and actor names keep ILIKE fast. `/status` publishes sync freshness, the conclusion-text cross-check, unattributed ballots, ballots-per-vote distribution and OCR nameless rows. `/feed.xml?politiker=ID` and `/feed.xml?emne=ID` add per-member and per-topic Atom feeds; `/openapi/v1.json` describes the API and `/api-docs` lists the endpoints.
 
+## ✅ Data explorer (`/udforsk`)
+
+Design your own figure: a **metric** (attendance, absence, share for/against/abstain, cohesion, ballots, votes, dissents, § 20 questions) × **who** (any parties, or up to eight members) × **period** (presets from 3 months to since 2004, or explicit dates) × **grouping** (none, month, quarter, year, session), optionally filtered by vote type and topic keyword, rendered as bar, line, donut or table. Every design is a link (`/udforsk?…`), the numbers are always shown as a table with the basis (denominator) behind each value, and the same query returns CSV/JSON from `/api/v1/explore`. Implementation: one grouped SQL query over `mv_ballots` per request (entity × month), bucketed and scored in memory by `ExplorerMath` (tested); `ExplorerQueryString` maps URLs both ways (tested).
+
+## ✅ Charts and visual summaries
+
+Server-rendered SVG components (`Components/Charts/Svg`): grouped bars, multi-series lines, donut, a career timeline band and a **hemicycle** (parliament diagram: every registered member as a seat on concentric arcs, party blocks as wedges, coloured by ballot, each seat linking to the member). Used on: vote pages (hemicycle plus a **plain-language summary** built only from the counts, e.g. "Vedtaget med 106 stemmer for og 6 imod. For stemte S, SF og V. Imod stemte DD. 67 af 179 medlemmer var fraværende."), the home page (votes per month, attendance per group this session), profiles (career timeline of groups, ministerial posts and leave; attendance per session), party pages (attendance and cohesion over time) and session pages (attendance per group). Design rules: validated categorical palette as CSS variables, hairline grids, thin marks with rounded data-ends, surface rings on markers, direct labels only where they fit, a legend for multi-series charts, and a table with the same numbers under every chart.
+
 ## ✅ Home and About
 
 - Home: headline counts, latest votes, last sync time.
