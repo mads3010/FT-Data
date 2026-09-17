@@ -1,5 +1,6 @@
 @page "/"
 @inject ISiteQueries Site
+@inject ISessionQueries SessionQueries
 
 <PageTitle>Folketingets afstemninger – hvem stemte hvad?</PageTitle>
 
@@ -22,6 +23,18 @@ else
         <StatTile Label="Senest opdateret" Value="@(overview.LastSyncCompletedAt is { } s ? Labels.DateShort(s.ToLocalTime()) : "–")" Note="@(overview.LatestVote is { } l ? $"seneste afstemning {Labels.Date(l)}" : null)" />
     </div>
 
+    @if (monthly.Count > 1)
+    {
+        <h2>Afstemninger pr. måned</h2>
+        <BarChart Series="monthlySeries" AriaLabel="Afstemninger pr. måned de seneste 12 måneder" H="200" />
+    }
+    @if (session is not null && attendanceSeries.Count > 0)
+    {
+        <h2>Fremmøde pr. gruppe, @session.Session.Title</h2>
+        <p class="small muted">Andel af registrerede stemmer, hvor medlemmerne stemte for, imod eller hverken/eller. Ministre og medlemmer på orlov trækker tallet ned. <a href="/folketingsaar/@session.Session.PeriodId">Mere om folketingsåret →</a></p>
+        <BarChart Series="attendanceSeries" Percent="true" AriaLabel="@($"Fremmøde pr. gruppe i {session.Session.Title}")" H="220" />
+    }
+
     <h2>Seneste afstemninger</h2>
     @if (overview.LatestVotes.Count == 0)
     {
@@ -34,6 +47,11 @@ else
     }
 
     <div class="grid grid-2" style="margin-top:1.5rem">
+        <div class="card">
+            <h3>Udforsk selv</h3>
+            <p class="small">Sammensæt din egen figur: fx to partiers fravær de seneste seks måneder som lagkage, eller andel imod pr. folketingsår siden 2004 som kurve.</p>
+            <a href="/udforsk">Udforsk data →</a>
+        </div>
         <div class="card">
             <h3>Politikere</h3>
             <p class="small">Stemmehistorik, fremmøde, hverv og forslag for hvert medlem, og hvor ofte de stemmer som deres gruppe.</p>
@@ -64,6 +82,25 @@ else
 
 @code {
     private SiteOverview? overview;
+    private IReadOnlyList<MonthlyVoteCount> monthly = [];
+    private List<ChartSeries> monthlySeries = [];
+    private SessionDetail? session;
+    private List<ChartSeries> attendanceSeries = [];
 
-    protected override async Task OnInitializedAsync() => overview = await Site.GetOverviewAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        overview = await Site.GetOverviewAsync();
+        monthly = await Site.GetMonthlyVoteCountsAsync(12);
+        monthlySeries = [new ChartSeries("Afstemninger", monthly.Select(m => new ChartPoint(m.Label, m.Votes, $"{m.Passed} vedtaget")).ToList(), 1)];
+        var sessions = await SessionQueries.ListAsync();
+        if (sessions.Count > 0)
+        {
+            session = await SessionQueries.GetAsync(sessions[0].PeriodId);
+            attendanceSeries = session is null ? [] :
+            [
+                new ChartSeries("Fremmøde", session.Parties.Where(p => p.Members >= 3).OrderByDescending(p => p.AttendanceRate ?? 0)
+                    .Select(p => new ChartPoint(p.ShortName, p.AttendanceRate, $"{p.Members} medlemmer")).ToList(), 1),
+            ];
+        }
+    }
 }

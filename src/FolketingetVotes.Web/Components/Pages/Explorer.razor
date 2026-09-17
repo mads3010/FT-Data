@@ -1,0 +1,212 @@
+@page "/udforsk"
+@inject IExplorerQueries ExplorerQueries
+@inject IPartyQueries PartyQueries
+@inject IPoliticianQueries PoliticianQueries
+
+<PageTitle>Udforsk data</PageTitle>
+<PageMeta Title="Udforsk data" Description="Sammensæt din egen figur: vælg måling, partier eller politikere, periode og diagramtype." />
+
+<h1>Udforsk data</h1>
+<p class="lead">Vælg en måling, hvem den skal gælde for, en periode og en figur. Alt beregnes af Folketingets registrerede stemmer; hver figur har et link, der kan deles, og tallene bag kan hentes.</p>
+
+<form class="filters explorer" method="get" action="/udforsk">
+    <label>Måling
+        <select name="metric">
+            @foreach (var m in Enum.GetValues<ExplorerMetric>())
+            {
+                <option value="@m" selected="@(m == query.Metric)">@ExplorerMath.Label(m)</option>
+            }
+        </select>
+    </label>
+    <label>Partier (vælg flere med Ctrl/Cmd; ingen = alle)
+        <select name="parties" multiple size="6">
+            @foreach (var p in parties)
+            {
+                <option value="@p.ShortName" selected="@query.Parties.Contains(p.ShortName)">@p.Name (@p.ShortName)</option>
+            }
+        </select>
+    </label>
+    <label>…eller politikere (nuværende medlemmer; erstatter partivalget)
+        <select name="politicians" multiple size="6">
+            @foreach (var p in politicians)
+            {
+                <option value="@p.ActorId" selected="@query.Politicians.Contains(p.ActorId)">@p.Name (@p.PartyShortName)</option>
+            }
+        </select>
+    </label>
+    <label>Periode
+        <select name="range">
+            <option value="3m" selected="@(Range == "3m")">Seneste 3 måneder</option>
+            <option value="6m" selected="@(Range is null or "6m")">Seneste 6 måneder</option>
+            <option value="12m" selected="@(Range == "12m")">Seneste 12 måneder</option>
+            <option value="24m" selected="@(Range == "24m")">Seneste 2 år</option>
+            <option value="5y" selected="@(Range == "5y")">Seneste 5 år</option>
+            <option value="all" selected="@(Range == "all")">Siden 2004</option>
+        </select>
+    </label>
+    <label>Fra (valgfri)
+        <input type="date" name="from" value="@From" />
+    </label>
+    <label>Til (valgfri)
+        <input type="date" name="to" value="@To" />
+    </label>
+    <label>Opdel efter
+        <select name="grouping">
+            <option value="None" selected="@(query.Grouping == ExplorerGrouping.None)">Én værdi pr. valg</option>
+            <option value="Month" selected="@(query.Grouping == ExplorerGrouping.Month)">Måned</option>
+            <option value="Quarter" selected="@(query.Grouping == ExplorerGrouping.Quarter)">Kvartal</option>
+            <option value="Year" selected="@(query.Grouping == ExplorerGrouping.Year)">År</option>
+            <option value="Session" selected="@(query.Grouping == ExplorerGrouping.Session)">Folketingsår</option>
+        </select>
+    </label>
+    <label>Afstemningstype
+        <select name="voteType">
+            <option value="">Alle</option>
+            @foreach (var t in Enum.GetValues<VoteType>())
+            {
+                <option value="@t" selected="@(t == query.VoteType)">@Labels.VoteType(t)</option>
+            }
+        </select>
+    </label>
+    <label>Emne (valgfrit emneord)
+        <input type="text" name="topic" value="@Topic" placeholder="fx flygtninge" />
+    </label>
+    <label>Figur
+        <select name="chart">
+            <option value="Bar" selected="@(query.Chart == ExplorerChart.Bar)">Søjler</option>
+            <option value="Line" selected="@(query.Chart == ExplorerChart.Line)">Kurve</option>
+            <option value="Pie" selected="@(query.Chart == ExplorerChart.Pie)">Lagkage</option>
+            <option value="Table" selected="@(query.Chart == ExplorerChart.Table)">Kun tabel</option>
+        </select>
+    </label>
+    <button type="submit">Vis</button>
+</form>
+
+<p class="small muted">Eksempler:
+    <a href="/udforsk?metric=Absence&parties=S,V&range=6m&chart=Pie">S og V: fravær seneste 6 måneder (lagkage)</a> ·
+    <a href="/udforsk?metric=Attendance&range=12m&grouping=Month&chart=Line">Fremmøde pr. måned, alle partier</a> ·
+    <a href="/udforsk?metric=AgainstShare&parties=EL,DF&range=all&grouping=Session&chart=Line">EL og DF: andel imod pr. folketingsår siden 2004</a> ·
+    <a href="/udforsk?metric=Cohesion&range=5y&grouping=Year&chart=Bar">Sammenhold pr. år, seneste 5 år</a> ·
+    <a href="/udforsk?metric=Questions&range=12m&chart=Bar">§ 20-spørgsmål pr. parti, seneste 12 måneder</a>
+</p>
+
+@if (result is null)
+{
+    <p>Beregner…</p>
+}
+else
+{
+    <h2>@result.MetricLabel</h2>
+    <p class="muted small">
+        @Labels.Date(result.Query.From!.Value) – @Labels.Date(result.Query.To!.Value)
+        @if (result.Query.VoteType is { } vt) { <text> · @Labels.VoteType(vt)</text> }
+        @if (result.KeywordName is not null) { <text> · emne: @result.KeywordName</text> }
+        @if (result.Query.ByPoliticians) { <text> · pr. politiker</text> } else if (result.Query.Parties.Count == 0) { <text> · alle grupper</text> }
+    </p>
+    @foreach (var note in result.Notes)
+    {
+        <div class="notice">@note</div>
+    }
+
+    @if (series.Count == 0 || series.All(s => s.Points.All(p => p.Value is null)))
+    {
+        <p class="muted">Ingen data for valget.</p>
+    }
+    else
+    {
+        switch (result.Query.Chart)
+        {
+            case ExplorerChart.Line:
+                <LineChart Series="series" Percent="result.Query.IsPercent" AriaLabel="@result.MetricLabel" />
+                break;
+            case ExplorerChart.Pie:
+                @if (result.Query.Grouping != ExplorerGrouping.None)
+                {
+                    <div class="notice">Lagkagen viser én værdi pr. valg; opdelingen efter tid er lagt sammen. Brug søjler eller kurve for at se udviklingen.</div>
+                }
+                <PieChart Values="pieValues" Percent="result.Query.IsPercent" Center="@(result.Query.IsPercent ? "andel" : "antal")" AriaLabel="@result.MetricLabel" />
+                break;
+            case ExplorerChart.Table:
+                break;
+            default:
+                <BarChart Series="series" Percent="result.Query.IsPercent" AriaLabel="@result.MetricLabel" />
+                break;
+        }
+
+        <h3>Tallene</h3>
+        <div class="table-wrap">
+            <table class="data">
+                <thead><tr><th>@(result.Query.ByPoliticians ? "Politiker" : "Gruppe")</th>@foreach (var c in result.Categories) { <th class="num">@c</th> }</tr></thead>
+                <tbody>
+                    @foreach (var s in result.Series)
+                    {
+                        <tr>
+                            <td>@s.Name</td>
+                            @foreach (var c in result.Categories)
+                            {
+                                var p = s.Points.FirstOrDefault(x => x.Label == c);
+                                <td class="num" title="@(p is null ? "" : $"grundlag: {p.Basis}")">@(p?.Value is { } v ? ChartFormat.Value(v, result.Query.IsPercent) : "–")</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="small muted">Hold musen over et tal for at se grundlaget (antal stemmer bag andelen). Hent som <a href="@ApiUrl("csv")">CSV</a> eller <a href="@ApiUrl("json")">JSON</a> · <a href="@ExplorerQueryString.Build(result.Query, Topic)">Link til denne figur</a></p>
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "metric")] public string? Metric { get; set; }
+    [SupplyParameterFromQuery(Name = "parties")] public string? Parties { get; set; }
+    [SupplyParameterFromQuery(Name = "politicians")] public string? Politicians { get; set; }
+    [SupplyParameterFromQuery(Name = "from")] public string? From { get; set; }
+    [SupplyParameterFromQuery(Name = "to")] public string? To { get; set; }
+    [SupplyParameterFromQuery(Name = "range")] public string? Range { get; set; }
+    [SupplyParameterFromQuery(Name = "grouping")] public string? Grouping { get; set; }
+    [SupplyParameterFromQuery(Name = "voteType")] public string? VoteType { get; set; }
+    [SupplyParameterFromQuery(Name = "keyword")] public int? Keyword { get; set; }
+    [SupplyParameterFromQuery(Name = "topic")] public string? Topic { get; set; }
+    [SupplyParameterFromQuery(Name = "chart")] public string? Chart { get; set; }
+
+    private ExplorerQuery query = ExplorerQueryString.Parse(null, null, null, null, null, null, null, null, null, null);
+    private ExplorerResult? result;
+    private IReadOnlyList<PartyListItem> parties = [];
+    private IReadOnlyList<PoliticianListItem> politicians = [];
+    private List<ChartSeries> series = [];
+    private List<(string Name, double Value, int Slot)> pieValues = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        parties = (await PartyQueries.ListAsync()).Where(p => p.CurrentMembers > 0 || p.LastSeen >= new DateOnly(2004, 1, 1)).ToList();
+        politicians = (await PoliticianQueries.SearchAsync(new PoliticianFilter(CurrentOnly: true), 1, 400)).Items;
+
+        // Multi-selects arrive as repeated parameters; Blazor gives us the raw string(s) joined by comma when we ask for one value.
+        var keywordId = Keyword;
+        if (keywordId is null && !string.IsNullOrWhiteSpace(Topic) && await ExplorerQueries.ResolveKeywordAsync(Topic) is { } hit)
+        {
+            keywordId = hit.Id;
+        }
+
+        query = ExplorerQueryString.Parse(Metric, Parties, Politicians, From, To, Range, Grouping, VoteType, keywordId, Chart);
+        result = await ExplorerQueries.RunAsync(query);
+
+        series = result.Series.Select((s, i) => new ChartSeries(s.Name, s.Points.OrderBy(p => p.SortKey).Select(p => new ChartPoint(p.Label, p.Value, $"grundlag {p.Basis}")).ToList(), i + 1)).ToList();
+        pieValues = result.Series.Select((s, i) =>
+        {
+            var points = s.Points.Where(p => p.Value is not null).ToList();
+            if (points.Count == 0)
+            {
+                return (s.Name, 0d, i + 1);
+            }
+
+            // One value per series: a weighted mean of the buckets for shares, a sum for counts.
+            var value = result.Query.IsPercent
+                ? points.Sum(p => p.Value!.Value * p.Basis) / Math.Max(1, points.Sum(p => p.Basis))
+                : points.Sum(p => p.Value!.Value);
+            return (s.Name, value, i + 1);
+        }).ToList();
+    }
+
+    private string ApiUrl(string format) => ExplorerQueryString.Build(query, Topic).Replace("/udforsk", "/api/v1/explore", StringComparison.Ordinal) + "&format=" + format;
+}

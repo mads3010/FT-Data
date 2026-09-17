@@ -1,0 +1,58 @@
+@* Horizontal time bands (e.g. a member's groups, ministerial posts and leave) on one axis from the first date to today. *@
+<figure class="chart">
+    <svg viewBox="0 0 @W @H" width="100%" role="img" aria-label="Tidslinje" style="max-height:@(H)px">
+        @foreach (var year in ticks)
+        {
+            <line x1="@F(X(new DateOnly(year, 1, 1)))" x2="@F(X(new DateOnly(year, 1, 1)))" y1="@Top" y2="@(H - 18)" class="grid" />
+            @Svg.Text(X(new DateOnly(year, 1, 1)), H - 4, "tick", "middle", year.ToString())
+        }
+        @for (var r = 0; r < Rows.Count; r++)
+        {
+            var row = Rows[r];
+            var y = Top + r * RowH;
+            @Svg.Text(0, y + 13, "tick", "start", row.Label)
+            @foreach (var span in row.Spans)
+            {
+                var x1 = X(span.Start);
+                var x2 = X(span.End ?? today);
+                <rect x="@F(x1)" y="@(y + 2)" width="@F(Math.Max(2, x2 - x1))" height="@(RowH - 6)" rx="3" fill="@span.Color" class="@(span.Hatched ? "hatched" : "")">
+                    <title>@span.Title: @Labels.Date(span.Start) – @(span.End is null ? "nu" : Labels.Date(span.End.Value))</title>
+                </rect>
+            }
+        }
+    </svg>
+</figure>
+
+@code {
+    public sealed record Span(string Title, DateOnly Start, DateOnly? End, string Color, bool Hatched = false);
+    public sealed record Row(string Label, IReadOnlyList<Span> Spans);
+
+    private const int W = 720;
+    private const int Left = 90;
+    private const int Top = 4;
+    private const int RowH = 22;
+
+    [Parameter, EditorRequired] public IReadOnlyList<Row> Rows { get; set; } = [];
+
+    private int H => Top + Rows.Count * RowH + 22;
+    private DateOnly first;
+    private readonly DateOnly today = DateOnly.FromDateTime(DateTime.Today);
+    private List<int> ticks = [];
+
+    protected override void OnParametersSet()
+    {
+        var starts = Rows.SelectMany(r => r.Spans).Select(s => s.Start).DefaultIfEmpty(today.AddYears(-1)).ToList();
+        first = starts.Min();
+        var years = today.Year - first.Year;
+        var step = years > 24 ? 5 : years > 10 ? 2 : 1;
+        ticks = Enumerable.Range(first.Year, Math.Max(1, years + 1)).Where(y => y % step == 0).ToList();
+    }
+
+    private double X(DateOnly d)
+    {
+        var span = Math.Max(1, today.DayNumber - first.DayNumber);
+        return Left + (W - Left - 8) * Math.Clamp(d.DayNumber - first.DayNumber, 0, span) / (double)span;
+    }
+
+    private static string F(double v) => Svg.F(v);
+}

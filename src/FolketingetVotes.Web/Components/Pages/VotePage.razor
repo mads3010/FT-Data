@@ -31,6 +31,8 @@ else
         · @Labels.DateTime(v.Date)
     </p>
 
+    <p class="narrative">@VoteNarrative.Describe(v, detail.Parties)</p>
+
     <div class="tiles">
         <StatTile Label="For" Value="@v.ForCount.ToString()" />
         <StatTile Label="Imod" Value="@v.AgainstCount.ToString()" />
@@ -50,9 +52,14 @@ else
     <h2>Fordeling pr. parti</h2>
     <PartyBreakdownChart Parties="detail.Parties" />
 
-    <h2>Alle medlemmer</h2>
-    <p class="small muted">Hvert felt er et medlem; hold musen over eller klik for at se hvem. Grupperet efter den gruppe medlemmet tilhørte på afstemningsdagen.</p>
-    <SeatGrid Ballots="detail.Ballots" />
+    <h2>Salen</h2>
+    <p class="small muted">Hvert sæde er et medlem, samlet gruppevis (største gruppe først) og farvet efter stemme; hold musen over eller klik for at se hvem.</p>
+    <BallotLegend />
+    <Hemicycle Ballots="detail.Ballots" />
+    <details>
+        <summary class="small">Vis som gitter pr. gruppe</summary>
+        <SeatGrid Ballots="detail.Ballots" />
+    </details>
 
     @if (dissenters.Count > 0)
     {

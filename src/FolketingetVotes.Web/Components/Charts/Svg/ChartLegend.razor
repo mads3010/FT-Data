@@ -1,0 +1,14 @@
+@* Legend for multi-series charts (always present for two or more series). *@
+@if (Series.Count > 1)
+{
+    <div class="legend" aria-hidden="true">
+        @foreach (var s in Series)
+        {
+            <span class="legend-item"><span class="swatch" style="background:@ChartFormat.SeriesColor(s.Slot)"></span>@s.Name</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+}

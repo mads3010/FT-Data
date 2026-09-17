@@ -83,13 +83,14 @@ internal sealed class VoteQueries(FolketingetDbContext db) : IVoteQueries
             caseSummary = await CaseQueries.SummaryAsync(db, caseId, cancellationToken);
         }
 
-        var partyNames = await db.Parties.ToDictionaryAsync(p => p.ShortName, p => p.Name, cancellationToken);
+        var partyInfo = await db.Parties.ToDictionaryAsync(p => p.ShortName, p => (p.Name, p.IsIndependentGroup), cancellationToken);
         var breakdown = await db.VotePartyBreakdowns.Where(b => b.VoteId == voteId).ToListAsync(cancellationToken);
         var parties = breakdown
             .Select(b => new PartyVoteBreakdown(
                 b.PartyShortName,
-                b.PartyShortName is null ? "Ukendt gruppe" : partyNames.GetValueOrDefault(b.PartyShortName, b.PartyShortName),
-                b.ForCount, b.AgainstCount, b.AbstainCount, b.AbsentCount))
+                b.PartyShortName is null ? "Ukendt gruppe" : partyInfo.TryGetValue(b.PartyShortName, out var info) ? info.Name : b.PartyShortName,
+                b.ForCount, b.AgainstCount, b.AbstainCount, b.AbsentCount,
+                b.PartyShortName is not null && partyInfo.TryGetValue(b.PartyShortName, out var flag) && flag.IsIndependentGroup))
             .OrderByDescending(p => p.Total).ThenBy(p => p.PartyShortName)
             .ToList();
         var majorities = breakdown.Where(b => b.PartyShortName is not null).ToDictionary(b => b.PartyShortName!, b => b.MajorityBallotType);

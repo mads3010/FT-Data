@@ -77,14 +77,21 @@ else
         </dl>
     }
 
-    <h2>Gruppetilhørsforhold</h2>
+    <h2>Karriere</h2>
     @if (profile.Memberships.Count == 0)
     {
         <p class="muted">Ingen registrerede gruppemedlemskaber.</p>
     }
     else
     {
+        <TimelineBand Rows="timelineRows" />
         <MembershipTimeline Memberships="profile.Memberships" />
+    }
+
+    @if (profile.PerPeriod.Count > 1)
+    {
+        <h2>Fremmøde over tid</h2>
+        <LineChart Series="attendanceTrend" Percent="true" AriaLabel="Fremmøde pr. folketingsår" H="220" />
     }
 
     <h2>Stemmer pr. folketingsår</h2>
@@ -163,6 +170,8 @@ else
     private BallotType? Ballot => Enum.TryParse<BallotType>(BallotText, true, out var b) ? b : null;
     private PagedResult<PoliticianBallotRow>? ballots;
     private IReadOnlyList<PeriodOption> periods = [];
+    private List<TimelineBand.Row> timelineRows = [];
+    private List<ChartSeries> attendanceTrend = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -175,6 +184,25 @@ else
 
         periods = await Site.GetPeriodsWithVotesAsync();
         ballots = await Politicians.GetBallotsAsync(Id, new BallotFilter(Period, Ballot, null, Dissent, Query), Math.Max(1, Page ?? 1), PageSize);
+
+        timelineRows =
+        [
+            new TimelineBand.Row("Gruppe", profile.Memberships.Select(m => new TimelineBand.Span(m.PartyName, m.StartDate, m.EndDate, PartyColors.For(m.PartyShortName))).ToList()),
+        ];
+        if (profile.MinisterPeriods.Count > 0)
+        {
+            timelineRows.Add(new TimelineBand.Row("Minister", profile.MinisterPeriods.Select(r => new TimelineBand.Span(r.Title, r.StartDate, r.EndDate, "var(--series-7)")).ToList()));
+        }
+
+        if (profile.LeavePeriods.Count > 0)
+        {
+            timelineRows.Add(new TimelineBand.Row("Orlov", profile.LeavePeriods.Select(r => new TimelineBand.Span(r.Title, r.StartDate, r.EndDate, "var(--absent-ink)", Hatched: true)).ToList()));
+        }
+
+        attendanceTrend =
+        [
+            new ChartSeries("Fremmøde", profile.PerPeriod.OrderBy(r => r.PeriodStart).Select(r => new ChartPoint(r.PeriodTitle, r.Stats.AttendanceRate, $"{r.Stats.Total} afstemninger")).ToList(), 1),
+        ];
     }
 
     private string Href(int page) => QueryString.Build($"/politikere/{Id}",

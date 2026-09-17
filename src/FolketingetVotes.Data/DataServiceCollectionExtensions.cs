@@ -34,6 +34,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<ICompositionQueries, CompositionQueries>();
         services.AddScoped<IDataQualityQueries, DataQualityQueries>();
         services.AddScoped<ISearchQueries, SearchQueries>();
+        services.AddScoped<IExplorerQueries, ExplorerQueries>();
 
         // v1 ships without generated summaries; replace this registration to enable them (docs/roadmap.md).
         services.AddSingleton<ISummaryProvider, NullSummaryProvider>();

@@ -20,6 +20,7 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     [Theory]
     [InlineData("/", "Hvem stemte for")]
     [InlineData("/afstemninger", "Prøvesag")]
+    [InlineData("/afstemninger/1000", "Vedtaget med 2 stemmer for og 1 imod")]
     [InlineData("/afstemninger/1000", "Fordeling pr. parti")]
     [InlineData("/politikere", "Anna Rødsen")]
     [InlineData("/politikere/1", "Stemmehistorik")]
@@ -46,6 +47,10 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     [InlineData("/feed.xml?politiker=1", "stemmer i Folketinget")]
     [InlineData("/feed.xml?emne=9", "prøveemne")]
     [InlineData("/openapi/v1.json", "\"openapi\"")]
+    [InlineData("/udforsk", "Udforsk data")]
+    [InlineData("/udforsk?metric=Absence&parties=RØD,BLÅ&chart=Pie", "Lagkagen viser")]
+    [InlineData("/udforsk?metric=Attendance&grouping=Month&chart=Line", "<svg")]
+    [InlineData("/api/v1/explore?metric=Attendance&format=csv", "series,label,value,basis")]
     [InlineData("/feed.xml", "<feed")]
     [InlineData("/sitemap.xml", "/afstemninger/1000")]
     [InlineData("/om", "metoden")]
@@ -110,6 +115,8 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
                 services.RemoveAll<ICompositionQueries>();
                 services.RemoveAll<IDataQualityQueries>();
                 services.RemoveAll<ISearchQueries>();
+                services.RemoveAll<IExplorerQueries>();
+                services.AddSingleton<IExplorerQueries, FakeData>();
                 services.AddSingleton<IQuestionQueries, FakeData>();
                 services.AddSingleton<ICompositionQueries, FakeData>();
                 services.AddSingleton<IDataQualityQueries, FakeData>();
@@ -128,8 +135,16 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     }
 
     private sealed class FakeData : IVoteQueries, IPoliticianQueries, IPartyQueries, ICaseQueries, ISiteQueries, ITopicQueries, ISessionQueries, IDonorQueries, IComparisonQueries,
-        IQuestionQueries, ICompositionQueries, IDataQualityQueries, ISearchQueries
+        IQuestionQueries, ICompositionQueries, IDataQualityQueries, ISearchQueries, IExplorerQueries
     {
+        public Task<ExplorerResult> RunAsync(ExplorerQuery query, CancellationToken ct = default)
+            => Task.FromResult(new ExplorerResult(query with { From = new DateOnly(2026, 3, 1), To = new DateOnly(2026, 9, 1) }, ExplorerMath.Label(query.Metric),
+                [new ExplorerSeries("RØD", "Røde Parti", [new ExplorerPoint("2026-03", "2026-03", 0.6, 100), new ExplorerPoint("2026-04", "2026-04", 0.7, 80)]),
+                 new ExplorerSeries("BLÅ", "Blå Parti", [new ExplorerPoint("2026-03", "2026-03", 0.4, 50), new ExplorerPoint("2026-04", "2026-04", 0.5, 40)])],
+                [], null));
+
+        public Task<(int Id, string Name)?> ResolveKeywordAsync(string name, CancellationToken ct = default) => Task.FromResult<(int, string)?>(null);
+
         private static readonly QuestionListItem Question = new(600, "S 1", "Prøvespørgsmål til ministeren?", 3, "Rebel Rødsen", "RØD", "prøveministeren", 1, "Anna Rødsen",
             new DateTime(2024, 2, 1), new DateTime(2024, 2, 8), false, false, "2023-24", "20231");
 
@@ -264,6 +279,9 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
 
         public Task<SiteOverview> GetOverviewAsync(CancellationToken ct = default)
             => Task.FromResult(new SiteOverview(DateTime.UtcNow, 1, 4, 4, Date, Date, [Vote]));
+
+        public Task<IReadOnlyList<MonthlyVoteCount>> GetMonthlyVoteCountsAsync(int months, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<MonthlyVoteCount>>([new MonthlyVoteCount(2026, 3, 40, 30), new MonthlyVoteCount(2026, 4, 55, 50)]);
 
         public Task<IReadOnlyList<PeriodOption>> GetPeriodsWithVotesAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<PeriodOption>>([new PeriodOption(1, "20231", "2023-24", new DateTime(2023, 10, 3))]);

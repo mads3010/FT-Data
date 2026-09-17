@@ -3,6 +3,7 @@ using System.Text;
 using FolketingetVotes.Core.Enums;
 using FolketingetVotes.Core.Queries;
 using FolketingetVotes.Core.ReadModels;
+using FolketingetVotes.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FolketingetVotes.Web.Api;
@@ -106,6 +107,19 @@ public static class ApiEndpoints
         api.MapGet("/composition", async (ICompositionQueries composition, CancellationToken ct) => Results.Ok(await composition.GetCurrentAsync(ct)));
         api.MapGet("/data-quality", async (IDataQualityQueries quality, CancellationToken ct) => Results.Ok(await quality.GetAsync(ct)));
         api.MapGet("/search", async (ISearchQueries search, [FromQuery(Name = "q")] string query, CancellationToken ct) => Results.Ok(await search.SearchAsync(query, ct)));
+        api.MapGet("/explore", async (IExplorerQueries explorer, [FromQuery] string? metric, [FromQuery] string? parties, [FromQuery] string? politicians, [FromQuery] string? from, [FromQuery] string? to, [FromQuery] string? range, [FromQuery] string? grouping, [FromQuery] string? voteType, [FromQuery] int? keyword, [FromQuery] string? topic, [FromQuery] string? chart, [FromQuery] string? format, CancellationToken ct) =>
+        {
+            var keywordId = keyword;
+            if (keywordId is null && !string.IsNullOrWhiteSpace(topic) && await explorer.ResolveKeywordAsync(topic, ct) is { } hit)
+            {
+                keywordId = hit.Id;
+            }
+
+            var result = await explorer.RunAsync(ExplorerQueryString.Parse(metric, parties, politicians, from, to, range, grouping, voteType, keywordId, chart), ct);
+            return string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase)
+                ? Results.Text(ExplorerCsv(result), "text/csv", Encoding.UTF8)
+                : Results.Ok(result);
+        });
 
         app.MapGet("/feed.xml", async (IVoteQueries votes, IPoliticianQueries politicians, ITopicQueries topics, HttpContext http, [FromQuery(Name = "politiker")] int? politician, [FromQuery(Name = "emne")] int? topic, CancellationToken ct) =>
         {
@@ -150,6 +164,23 @@ public static class ApiEndpoints
     private static int Clamp(int page) => page < 1 ? 1 : page;
 
     private static int ClampSize(int pageSize) => pageSize is < 1 or > 200 ? 50 : pageSize;
+
+    internal static string ExplorerCsv(ExplorerResult result)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("series,label,value,basis");
+        foreach (var s in result.Series)
+        {
+            foreach (var p in s.Points)
+            {
+                sb.Append(Quote(s.Name)).Append(',').Append(Quote(p.Label)).Append(',')
+                  .Append(p.Value?.ToString(CultureInfo.InvariantCulture) ?? string.Empty).Append(',')
+                  .Append(p.Basis.ToString(CultureInfo.InvariantCulture)).AppendLine();
+            }
+        }
+
+        return sb.ToString();
+    }
 
     internal static string ToCsv(IReadOnlyList<PoliticianBallotRow> rows)
     {
