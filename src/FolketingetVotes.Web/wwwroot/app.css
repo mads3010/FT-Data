@@ -204,3 +204,7 @@ form.explorer { display: grid; grid-template-columns: repeat(auto-fit, minmax(21
 form.explorer label { display: flex; flex-direction: column; }
 form.explorer select[multiple] { min-height: 8.5rem; }
 form.explorer button { align-self: end; justify-self: start; }
+
+/* ---------- Narrative ---------- */
+.narrative { font-size: 1.05rem; line-height: 1.55; background: var(--surface-2); border-radius: var(--radius); padding: 0.75rem 1rem; margin: 0.75rem 0 1rem; }
+details > summary { cursor: pointer; color: var(--link); margin: 0.5rem 0; }

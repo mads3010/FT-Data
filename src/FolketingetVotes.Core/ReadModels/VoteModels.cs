@@ -32,12 +32,69 @@ public sealed record PartyVoteBreakdown(
     int ForCount,
     int AgainstCount,
     int AbstainCount,
-    int AbsentCount)
+    int AbsentCount,
+    bool IsIndependentGroup = false)
 {
     public int Total => ForCount + AgainstCount + AbstainCount + AbsentCount;
 
-    /// <summary>The ballot cast by most present members, or null when nobody was present or it is a tie.</summary>
-    public BallotType? Majority => BallotMath.Majority(ForCount, AgainstCount, AbstainCount);
+    public int Present => ForCount + AgainstCount + AbstainCount;
+
+    /// <summary>The ballot cast by most present members; null when nobody was present, on a tie, or for independents (no group line).</summary>
+    public BallotType? Majority => IsIndependentGroup || PartyShortName is null ? null : BallotMath.Majority(ForCount, AgainstCount, AbstainCount);
+}
+
+/// <summary>A plain-language description of how a vote fell, built only from the counts.</summary>
+public static class VoteNarrative
+{
+    public static string Describe(VoteListItem vote, IReadOnlyList<PartyVoteBreakdown> parties)
+    {
+        ArgumentNullException.ThrowIfNull(vote);
+        ArgumentNullException.ThrowIfNull(parties);
+        var groups = parties.Where(p => p.PartyShortName is not null && !p.IsIndependentGroup && p.Present > 0).ToList();
+        var forParties = groups.Where(p => p.Majority == BallotType.For).Select(p => p.PartyShortName!).ToList();
+        var againstParties = groups.Where(p => p.Majority == BallotType.Against).Select(p => p.PartyShortName!).ToList();
+        var abstainParties = groups.Where(p => p.Majority == BallotType.Abstain).Select(p => p.PartyShortName!).ToList();
+        var splitParties = groups.Where(p => p.Majority is null).Select(p => p.PartyShortName!).ToList();
+        var independents = parties.Where(p => p.IsIndependentGroup && p.Present > 0).ToList();
+
+        var parts = new List<string>
+        {
+            $"{(vote.Passed ? "Vedtaget" : "Forkastet")} med {vote.ForCount} stemmer for og {vote.AgainstCount} imod" + (vote.AbstainCount > 0 ? $", {vote.AbstainCount} stemte hverken for eller imod" : string.Empty) + ".",
+        };
+        if (forParties.Count > 0)
+        {
+            parts.Add($"For stemte {Join(forParties)}.");
+        }
+
+        if (againstParties.Count > 0)
+        {
+            parts.Add($"Imod stemte {Join(againstParties)}.");
+        }
+
+        if (abstainParties.Count > 0)
+        {
+            parts.Add($"Hverken for eller imod: {Join(abstainParties)}.");
+        }
+
+        if (splitParties.Count > 0)
+        {
+            parts.Add($"Delt (lige mange for og imod): {Join(splitParties)}.");
+        }
+
+        if (independents.Count > 0)
+        {
+            var f = independents.Sum(p => p.ForCount);
+            var a = independents.Sum(p => p.AgainstCount);
+            var h = independents.Sum(p => p.AbstainCount);
+            parts.Add($"Løsgængere: {f} for, {a} imod" + (h > 0 ? $", {h} hverken" : string.Empty) + ".");
+        }
+
+        parts.Add($"{vote.AbsentCount} af {vote.Total} medlemmer var fraværende.");
+        return string.Join(' ', parts);
+    }
+
+    private static string Join(List<string> names) =>
+        names.Count == 1 ? names[0] : string.Join(", ", names.Take(names.Count - 1)) + " og " + names[^1];
 }
 
 public sealed record BallotRow(

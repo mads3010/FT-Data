@@ -13,6 +13,12 @@ else
     <p class="muted small"><a href="/partier">Partier</a></p>
     <h1><span class="chip" style="font-size:1rem"><span class="swatch" style="background:@PartyColors.For(party.ShortName)"></span>@party.ShortName</span> @party.Name</h1>
 
+    @if (party.PerPeriod.Count > 1)
+    {
+        <h2>Udvikling</h2>
+        <LineChart Series="trend" Percent="true" AriaLabel="Fremmøde og sammenhold pr. folketingsår" H="240" />
+    }
+
     <h2>Fremmøde og sammenhold pr. folketingsår</h2>
     @if (party.IsIndependentGroup)
     {
@@ -118,6 +124,7 @@ else
     [Parameter] public string ShortName { get; set; } = string.Empty;
 
     private PartyDetail? party;
+    private List<ChartSeries> trend = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -125,6 +132,14 @@ else
         if (party is null)
         {
             Navigation.NotFound();
+            return;
+        }
+
+        var ordered = party.PerPeriod.OrderBy(r => r.PeriodStart).ToList();
+        trend = [new ChartSeries("Fremmøde", ordered.Select(r => new ChartPoint(r.PeriodTitle, r.AttendanceRate, $"{r.Members} medlemmer")).ToList(), 1)];
+        if (!party.IsIndependentGroup)
+        {
+            trend.Add(new ChartSeries("Sammenhold", ordered.Select(r => new ChartPoint(r.PeriodTitle, r.CohesionRate)).ToList(), 3));
         }
     }
 }

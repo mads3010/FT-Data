@@ -30,6 +30,19 @@ internal sealed class SiteQueries(FolketingetDbContext db) : ISiteQueries
         return new SiteOverview(lastSync, voteCount, ballotCount, politicianCount, earliest, latest, latestVotes);
     }
 
+    public async Task<IReadOnlyList<MonthlyVoteCount>> GetMonthlyVoteCountsAsync(int months, CancellationToken cancellationToken = default)
+    {
+        var since = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-(months - 1));
+        var rows = await (
+            from v in db.Votes
+            join m in db.Meetings on v.MeetingId equals m.Id
+            where m.Date >= since
+            group v by new { m.Date.Year, m.Date.Month } into g
+            orderby g.Key.Year, g.Key.Month
+            select new MonthlyVoteCount(g.Key.Year, g.Key.Month, g.Count(), g.Count(v => v.Passed))).ToListAsync(cancellationToken);
+        return rows;
+    }
+
     public async Task<IReadOnlyList<SitemapEntry>> GetSitemapAsync(CancellationToken cancellationToken = default)
     {
         var entries = new List<SitemapEntry> { new("/", null), new("/afstemninger", null), new("/politikere", null), new("/partier", null), new("/sager", null), new("/emner", null), new("/folketingsaar", null), new("/bidrag", null), new("/om", null) };

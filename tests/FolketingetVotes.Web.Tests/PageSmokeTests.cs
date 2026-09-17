@@ -20,6 +20,7 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
     [Theory]
     [InlineData("/", "Hvem stemte for")]
     [InlineData("/afstemninger", "Prøvesag")]
+    [InlineData("/afstemninger/1000", "Vedtaget med 2 stemmer for og 1 imod")]
     [InlineData("/afstemninger/1000", "Fordeling pr. parti")]
     [InlineData("/politikere", "Anna Rødsen")]
     [InlineData("/politikere/1", "Stemmehistorik")]
@@ -278,6 +279,9 @@ public class PageSmokeTests : IClassFixture<PageSmokeTests.Factory>
 
         public Task<SiteOverview> GetOverviewAsync(CancellationToken ct = default)
             => Task.FromResult(new SiteOverview(DateTime.UtcNow, 1, 4, 4, Date, Date, [Vote]));
+
+        public Task<IReadOnlyList<MonthlyVoteCount>> GetMonthlyVoteCountsAsync(int months, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<MonthlyVoteCount>>([new MonthlyVoteCount(2026, 3, 40, 30), new MonthlyVoteCount(2026, 4, 55, 50)]);
 
         public Task<IReadOnlyList<PeriodOption>> GetPeriodsWithVotesAsync(CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<PeriodOption>>([new PeriodOption(1, "20231", "2023-24", new DateTime(2023, 10, 3))]);

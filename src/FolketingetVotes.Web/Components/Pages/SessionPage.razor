@@ -46,6 +46,10 @@ else
     }
 
     <h2>Partierne</h2>
+    @if (attendance.Count > 0)
+    {
+        <BarChart Series="attendance" Percent="true" AriaLabel="Fremmøde pr. gruppe" H="220" />
+    }
     <div class="table-wrap">
         <table class="data">
             <thead><tr><th>Gruppe</th><th class="num">Medlemmer</th><th class="num">Stemmer</th><th>Fremmøde</th><th>Sammenhold</th></tr></thead>
@@ -109,6 +113,7 @@ else
     [Parameter] public int Id { get; set; }
 
     private SessionDetail? detail;
+    private List<ChartSeries> attendance = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -116,6 +121,13 @@ else
         if (detail is null)
         {
             Navigation.NotFound();
+            return;
         }
+
+        attendance =
+        [
+            new ChartSeries("Fremmøde", detail.Parties.Where(p => p.Members >= 3).OrderByDescending(p => p.AttendanceRate ?? 0)
+                .Select(p => new ChartPoint(p.ShortName, p.AttendanceRate, $"{p.Members} medlemmer")).ToList(), 1),
+        ];
     }
 }
