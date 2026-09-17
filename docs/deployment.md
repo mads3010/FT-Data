@@ -39,6 +39,10 @@ All of these need an account created by you (and usually a card on file). Push-t
 `src/*/Dockerfile`; set `ConnectionStrings__Folketinget` as an environment variable and run `ingest migrate` then
 `ingest sync` once against the hosted database (from your laptop is fine: the sync only needs the connection string).
 
+## Upgrading a running Mac install
+
+The hourly sync agent runs its own published copy of the ingest tool (`~/.local/share/folketinget-votes/ingest`), and `sync` ends by rebuilding the statistics views from the SQL embedded in *that* copy. After pulling code that changes anything under `src/FolketingetVotes.Data/Sql`, re-run `deploy/macos/install-sync-agent.sh` (it republishes and restarts the agent), otherwise the next hourly run silently recreates the views with the old definitions and pages that read new columns fail. Then republish the web app.
+
 ## Checklist for any host
 
 - Set `ConnectionStrings__Folketinget`; nothing else is required.
