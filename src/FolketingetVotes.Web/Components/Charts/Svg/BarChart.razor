@@ -1,0 +1,82 @@
+@* Grouped bar chart. Categories along the x axis, one bar per series; recessive hairline grid, 4 px rounded data-ends, a 2 px surface gap between bars. *@
+<ChartLegend Series="Series" />
+<figure class="chart">
+    <svg viewBox="0 0 @W @H" width="100%" role="img" aria-label="@AriaLabel" style="max-height:@(H)px">
+        @for (var i = 0; i <= 4; i++)
+        {
+            var y = Top + PlotH - PlotH * i / 4.0;
+            <line x1="@Left" x2="@(W - Right)" y1="@F(y)" y2="@F(y)" class="grid" />
+            @Svg.Text(Left - 6, y + 4, "tick", "end", ChartFormat.Value(max * i / 4.0, Percent))
+        }
+        @for (var c = 0; c < categories.Count; c++)
+        {
+            var slotX = Left + c * slotW;
+            @Svg.Text(slotX + slotW / 2, Top + PlotH + 16, "tick", "middle", Truncate(categories[c]))
+            @for (var s = 0; s < Series.Count; s++)
+            {
+                var point = Series[s].Points.FirstOrDefault(p => p.Label == categories[c]);
+                if (point?.Value is not { } v)
+                {
+                    continue;
+                }
+
+                var barH = Math.Max(0, PlotH * Math.Min(v, max) / max);
+                var x = slotX + groupPad + s * (barW + Gap);
+                var y = Top + PlotH - barH;
+                <path d="@BarPath(x, y, barW, barH)" fill="@ChartFormat.SeriesColor(Series[s].Slot)">
+                    <title>@Series[s].Name · @categories[c]: @ChartFormat.Value(v, Percent)@(point.Detail is null ? "" : " · " + point.Detail)</title>
+                </path>
+                @if (showValues)
+                {
+                    @Svg.Text(x + barW / 2, y - 4, "value", "middle", ChartFormat.Value(v, Percent))
+                }
+            }
+        }
+    </svg>
+</figure>
+
+@code {
+    private const int W = 720;
+    private const int Left = 52;
+    private const int Right = 12;
+    private const int Top = 14;
+    private const int Bottom = 28;
+    private const int Gap = 2;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+    [Parameter] public bool Percent { get; set; }
+    [Parameter] public int H { get; set; } = 260;
+    [Parameter] public string AriaLabel { get; set; } = "Søjlediagram";
+
+    private int PlotH => H - Top - Bottom;
+    private List<string> categories = [];
+    private double max = 1;
+    private double slotW;
+    private double barW;
+    private double groupPad;
+    private bool showValues;
+
+    protected override void OnParametersSet()
+    {
+        categories = Series.SelectMany(s => s.Points.Select(p => p.Label)).Distinct().ToList();
+        var values = Series.SelectMany(s => s.Points).Where(p => p.Value is not null).Select(p => p.Value!.Value).DefaultIfEmpty(0).ToList();
+        max = ChartFormat.NiceMax(values.Max(), Percent);
+        slotW = categories.Count == 0 ? 0 : (W - Left - Right) / (double)categories.Count;
+        var seriesCount = Math.Max(1, Series.Count);
+        var available = slotW * 0.72;
+        barW = Math.Min(24, Math.Max(3, (available - Gap * (seriesCount - 1)) / seriesCount));
+        groupPad = (slotW - (barW * seriesCount + Gap * (seriesCount - 1))) / 2;
+        showValues = categories.Count * seriesCount <= 14;
+    }
+
+    private static string F(double v) => Svg.F(v);
+
+    private string BarPath(double x, double y, double w, double h)
+    {
+        var r = Math.Min(4, Math.Min(w / 2, h));
+        var bottom = Top + PlotH;
+        return $"M{F(x)},{F(bottom)} V{F(y + r)} Q{F(x)},{F(y)} {F(x + r)},{F(y)} H{F(x + w - r)} Q{F(x + w)},{F(y)} {F(x + w)},{F(y + r)} V{F(bottom)} Z";
+    }
+
+    private string Truncate(string label) => categories.Count > 8 && label.Length > 7 ? label[..6] + "…" : label;
+}

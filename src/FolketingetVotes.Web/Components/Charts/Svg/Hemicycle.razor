@@ -1,0 +1,86 @@
+@* A parliament diagram: every registered member as a seat on concentric arcs, grouped by party (largest first), coloured by ballot. *@
+<figure class="chart">
+    <svg viewBox="0 0 @W @H" width="100%" role="img" aria-label="Sæder farvet efter stemme" style="max-height:@(H)px">
+        @foreach (var seat in seats)
+        {
+            <a href="/politikere/@seat.Ballot.ActorId">
+                <circle cx="@F(seat.X)" cy="@F(seat.Y)" r="@F(seatR)" class="seat-@Labels.BallotCss(seat.Ballot.Ballot)">
+                    <title>@seat.Ballot.Name (@(seat.Ballot.PartyShortName ?? "uden gruppe")): @Labels.Ballot(seat.Ballot.Ballot)@(seat.Ballot.DissentsFromParty ? " – afveg fra gruppens flertal" : "")</title>
+                </circle>
+            </a>
+        }
+        @foreach (var label in labels)
+        {
+            @Svg.Text(label.X, label.Y, "tick", "middle", label.Text)
+        }
+    </svg>
+</figure>
+
+@code {
+    private const int W = 720;
+    private const int H = 400;
+    private const double Cx = 360;
+    private const double Cy = 372;
+    private const double InnerR = 120;
+    private const double OuterR = 345;
+
+    [Parameter, EditorRequired] public IReadOnlyList<BallotRow> Ballots { get; set; } = [];
+
+    private sealed record Seat(double X, double Y, double Angle, BallotRow Ballot);
+    private sealed record SeatLabel(double X, double Y, string Text);
+
+    private List<Seat> seats = [];
+    private List<SeatLabel> labels = [];
+    private double seatR = 6;
+
+    protected override void OnParametersSet()
+    {
+        var n = Ballots.Count;
+        if (n == 0)
+        {
+            seats = [];
+            return;
+        }
+
+        // Rows of seats between the inner and outer radius; seats per row proportional to the arc length.
+        var rows = n <= 60 ? 3 : n <= 120 ? 4 : n <= 200 ? 6 : 8;
+        var radii = Enumerable.Range(0, rows).Select(i => InnerR + (OuterR - InnerR) * i / Math.Max(1, rows - 1)).ToList();
+        var totalArc = radii.Sum();
+        var perRow = radii.Select(r => (int)Math.Round(n * r / totalArc)).ToList();
+        var diff = n - perRow.Sum();
+        perRow[^1] += diff;
+        seatR = Math.Min(7, (OuterR - InnerR) / rows * 0.36);
+
+        // Positions ordered by angle across all rows so that party blocks form contiguous wedges.
+        var positions = new List<(double X, double Y, double Angle)>();
+        for (var r = 0; r < rows; r++)
+        {
+            var count = Math.Max(0, perRow[r]);
+            for (var i = 0; i < count; i++)
+            {
+                var angle = count == 1 ? Math.PI / 2 : Math.PI - Math.PI * i / (count - 1);
+                positions.Add((Cx + radii[r] * Math.Cos(angle), Cy - radii[r] * Math.Sin(angle), angle));
+            }
+        }
+
+        positions = positions.OrderByDescending(p => p.Angle).ToList();
+
+        var ordered = Ballots
+            .GroupBy(b => b.PartyShortName)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key)
+            .SelectMany(g => g.OrderBy(b => b.Ballot).ThenBy(b => b.Name))
+            .ToList();
+        seats = ordered.Select((b, i) => new Seat(positions[i].X, positions[i].Y, positions[i].Angle, b)).ToList();
+
+        labels = seats.GroupBy(s => s.Ballot.PartyShortName)
+            .Where(g => g.Count() >= 4)
+            .Select(g =>
+            {
+                var mid = g.Average(s => s.Angle);
+                return new SeatLabel(Cx + (OuterR + 22) * Math.Cos(mid), Cy - (OuterR + 22) * Math.Sin(mid) + 4, g.Key ?? "–");
+            })
+            .ToList();
+    }
+
+    private static string F(double v) => Svg.F(v);
+}

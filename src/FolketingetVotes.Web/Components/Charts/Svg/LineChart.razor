@@ -1,0 +1,72 @@
+@* Multi-series line chart over ordered categories: 2 px lines, ≥ 8 px markers with a surface ring, direct end labels for up to four series. *@
+<ChartLegend Series="Series" />
+<figure class="chart">
+    <svg viewBox="0 0 @W @H" width="100%" role="img" aria-label="@AriaLabel" style="max-height:@(H)px">
+        @for (var i = 0; i <= 4; i++)
+        {
+            var y = Top + PlotH - PlotH * i / 4.0;
+            <line x1="@Left" x2="@(W - Right)" y1="@F(y)" y2="@F(y)" class="grid" />
+            @Svg.Text(Left - 6, y + 4, "tick", "end", ChartFormat.Value(max * i / 4.0, Percent))
+        }
+        @for (var c = 0; c < categories.Count; c++)
+        {
+            if (categories.Count <= 12 || c % Math.Max(1, categories.Count / 8) == 0)
+            {
+                @Svg.Text(X(c), Top + PlotH + 16, "tick", "middle", categories[c])
+            }
+        }
+        @foreach (var s in Series)
+        {
+            var pts = categories.Select((label, c) => (c, p: s.Points.FirstOrDefault(p => p.Label == label))).Where(t => t.p?.Value is not null).ToList();
+            if (pts.Count == 0)
+            {
+                continue;
+            }
+
+            var color = ChartFormat.SeriesColor(s.Slot);
+            var d = string.Join(" ", pts.Select((t, i) => (i == 0 ? "M" : "L") + F(X(t.c)) + "," + F(Y(t.p!.Value!.Value))));
+            <path d="@d" fill="none" stroke="@color" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+            @foreach (var (c, p) in pts)
+            {
+                <circle cx="@F(X(c))" cy="@F(Y(p!.Value!.Value))" r="5.5" class="ring" />
+                <circle cx="@F(X(c))" cy="@F(Y(p.Value.Value))" r="4" fill="@color"><title>@s.Name · @p.Label: @ChartFormat.Value(p.Value.Value, Percent)@(p.Detail is null ? "" : " · " + p.Detail)</title></circle>
+            }
+            @if (Series.Count <= 4)
+            {
+                var (lastC, lastP) = pts[^1];
+                var lastValue = lastP!.Value!.Value;
+                @Svg.Text(X(lastC) + 8, Y(lastValue) + 4, "value", "start", Series.Count > 1 ? s.Name : ChartFormat.Value(lastValue, Percent))
+            }
+        }
+    </svg>
+</figure>
+
+@code {
+    private const int W = 720;
+    private const int Left = 52;
+    private const int Right = 70;
+    private const int Top = 14;
+    private const int Bottom = 28;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartSeries> Series { get; set; } = [];
+    [Parameter] public bool Percent { get; set; }
+    [Parameter] public int H { get; set; } = 260;
+    [Parameter] public string AriaLabel { get; set; } = "Kurvediagram";
+
+    private int PlotH => H - Top - Bottom;
+    private List<string> categories = [];
+    private double max = 1;
+
+    protected override void OnParametersSet()
+    {
+        categories = Series.SelectMany(s => s.Points.Select(p => p.Label)).Distinct().ToList();
+        var values = Series.SelectMany(s => s.Points).Where(p => p.Value is not null).Select(p => p.Value!.Value).DefaultIfEmpty(0).ToList();
+        max = ChartFormat.NiceMax(values.Max(), Percent);
+    }
+
+    private double X(int c) => categories.Count <= 1 ? Left + (W - Left - Right) / 2.0 : Left + (W - Left - Right) * c / (double)(categories.Count - 1);
+
+    private double Y(double v) => Top + PlotH - PlotH * Math.Min(v, max) / max;
+
+    private static string F(double v) => Svg.F(v);
+}

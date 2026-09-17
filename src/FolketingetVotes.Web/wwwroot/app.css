@@ -178,3 +178,23 @@ table.matrix td.num { font-variant-numeric: tabular-nums; font-size: 0.8rem; min
 /* ---------- Header search ---------- */
 .site-search input { font: inherit; font-size: 0.9rem; padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); width: 150px; }
 .site-search input:focus { width: 220px; outline: 2px solid var(--accent); }
+
+/* ---------- SVG charts ---------- */
+:root { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948; }
+@media (prefers-color-scheme: dark) {
+  :root { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767; }
+}
+figure.chart { margin: 0.5rem 0 1rem; }
+figure.chart svg { display: block; font-family: inherit; }
+figure.chart .grid { stroke: var(--border); stroke-width: 1; }
+figure.chart .tick { font-size: 11px; fill: var(--text-2); }
+figure.chart .value { font-size: 11px; fill: var(--text); }
+figure.chart .ring { fill: var(--surface); }
+figure.chart rect.hatched { fill: url(#hatch); }
+figure.chart .seat-for { fill: var(--for); }
+figure.chart .seat-against { fill: var(--against); }
+figure.chart .seat-abstain { fill: var(--abstain); }
+figure.chart .seat-absent { fill: var(--absent); stroke: var(--absent-ink); stroke-width: 0.8; }
+figure.chart a:hover circle { stroke: var(--text); stroke-width: 2; }
+.legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.legend-item .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

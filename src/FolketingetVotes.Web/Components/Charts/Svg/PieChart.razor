@@ -1,0 +1,68 @@
+@* Donut for a small part-to-whole composition (≤ 8 slices; smaller ones fold into "Andre"). Slices are labelled directly. *@
+<figure class="chart chart-pie">
+    <svg viewBox="0 0 @W @H" width="100%" role="img" aria-label="@AriaLabel" style="max-height:@(H)px">
+        @{
+            var angle = -Math.PI / 2;
+        }
+        @foreach (var slice in slices)
+        {
+            var share = total == 0 ? 0 : slice.Value / total;
+            var sweep = share * Math.PI * 2;
+            var start = angle;
+            var end = angle + sweep;
+            angle = end;
+            var large = sweep > Math.PI ? 1 : 0;
+            var x1 = Cx + R * Math.Cos(start);
+            var y1 = Cy + R * Math.Sin(start);
+            var x2 = Cx + R * Math.Cos(end);
+            var y2 = Cy + R * Math.Sin(end);
+            var ix1 = Cx + Ri * Math.Cos(end);
+            var iy1 = Cy + Ri * Math.Sin(end);
+            var ix2 = Cx + Ri * Math.Cos(start);
+            var iy2 = Cy + Ri * Math.Sin(start);
+            var mid = (start + end) / 2;
+            var lx = Cx + (R + 22) * Math.Cos(mid);
+            var ly = Cy + (R + 22) * Math.Sin(mid);
+            <path d="M@(F(x1)),@(F(y1)) A@(R),@(R) 0 @large 1 @(F(x2)),@(F(y2)) L@(F(ix1)),@(F(iy1)) A@(Ri),@(Ri) 0 @large 0 @(F(ix2)),@(F(iy2)) Z" fill="@ChartFormat.SeriesColor(slice.Slot)" stroke="var(--surface)" stroke-width="2">
+                <title>@slice.Name: @ChartFormat.Value(slice.Value, Percent) (@Labels.Percent(share) af summen)</title>
+            </path>
+            @if (share >= 0.04)
+            {
+                @Svg.Text(lx, ly + 4, "value", Math.Cos(mid) < -0.1 ? "end" : Math.Cos(mid) > 0.1 ? "start" : "middle", $"{slice.Name}: {ChartFormat.Value(slice.Value, Percent)}")
+            }
+        }
+        @Svg.Text(Cx, Cy + 5, "tick", "middle", Center)
+    </svg>
+</figure>
+<p class="small muted">Lagkagen viser værdiernes indbyrdes størrelse (andel af summen af de viste værdier).</p>
+
+@code {
+    private const int W = 720;
+    private const int H = 300;
+    private const int Cx = 360;
+    private const int Cy = 148;
+    private const int R = 110;
+    private const int Ri = 62;
+
+    [Parameter, EditorRequired] public IReadOnlyList<(string Name, double Value, int Slot)> Values { get; set; } = [];
+    [Parameter] public bool Percent { get; set; }
+    [Parameter] public string Center { get; set; } = string.Empty;
+    [Parameter] public string AriaLabel { get; set; } = "Lagkagediagram";
+
+    private List<(string Name, double Value, int Slot)> slices = [];
+    private double total;
+
+    protected override void OnParametersSet()
+    {
+        var ordered = Values.Where(v => v.Value > 0).OrderByDescending(v => v.Value).ToList();
+        slices = ordered.Take(7).ToList();
+        if (ordered.Count > 7)
+        {
+            slices.Add(("Andre", ordered.Skip(7).Sum(v => v.Value), 8));
+        }
+
+        total = slices.Sum(s => s.Value);
+    }
+
+    private static string F(double v) => Svg.F(v);
+}
